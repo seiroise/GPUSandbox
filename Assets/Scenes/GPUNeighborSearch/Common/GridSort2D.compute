@@ -1,0 +1,51 @@
+﻿#pragma kernel BuildGridCS
+
+#include "./NeighborSearch2D.cginc"
+
+#define SIMULATION_BLOCK_SIZE 32
+
+StructuredBuffer<Particle2D> _ParticlesBufferRead;
+RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
+
+StructuredBuffer<uint2> _GridBufferRead;
+RWStructuredBuffer<uint2> _GridBufferWrite;
+
+cbuffer cb : register(b0)
+{
+	int _NumParticles;
+	float2 _GridDim;
+	float _GridH;
+};
+
+// 座標に対応するグリッド番号を計算する。
+// 小数点以下については、そのグリッド内の正規化された位置。(今回は使わないけど。
+float2 CalcGridAddress(float2 pos)
+{
+	return pos / _GridH;
+}
+
+// 座標に対応するグリッドハッシュ(本当にそう呼ぶかは不明...)
+uint GridHash(uint2 pos)
+{
+	return pos.y * _GridDim.x + pos.x;
+}
+
+// uint型のキー(x)と値(y)のペアを作成する
+uint2 MakeKeyValuePair(uint2 pos, uint value)
+{
+	return uint2(GridHash(pos), value);
+}
+
+// _ParticleBufferRead	: パーティクルの座標から所属グリッドの計算
+// _GridBufferWrite		: 所属グリッドのグリッドハッシュとパーティクル番号についての情報を格納する
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void BuildGridCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	if(pid > (uint)(_NumParticles - 1)) return;
+
+	float2 pos = _ParticlesBufferRead[pid].position;
+	float2 grid = CalcGridAddress(pos);
+
+	_GridBufferWrite[pid] = MakeKeyValuePair((uint2)grid, pid);
+}

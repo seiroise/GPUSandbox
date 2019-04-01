@@ -1,0 +1,72 @@
+﻿#pragma kernel BitonicSort
+#pragma kernel MatrixTranspose
+
+#define BITONIC_BLOCK_SIZE (512)
+#define TRANSPOSE_BLOCK_SIZE (16)
+
+// about "register" syntax
+// https://docs.microsoft.com/ja-jp/windows/desktop/direct3dhlsl/dx-graphics-hlsl-variable-register
+cbuffer cb : register(b0)
+{
+	uint _Level;
+	uint _LevelMask;
+	uint _Width;
+	uint _Height;
+};
+
+// 読み込み専用バッファ(対応するレジスタキーワードは"t"
+StructuredBuffer<uint2> _Input : register(t0);
+// 読み書きバッファ(対応するレジスタキーワードは"u"
+RWStructuredBuffer<uint2> _Data : register(u0);
+
+// バイトニックソート時に一時的にデータをロードするための
+// 共有メモリ上のデータ領域。一度に確保できる共有メモリの上限には注意
+groupshared uint2 _SharedData[BITONIC_BLOCK_SIZE];
+
+// ２つの要素の比較用の関数、lhs <= rhs となる場合にtrueを返す。
+// ベクトル内の要素は以下の意味を含んでいることを想定して比較される。
+// x : ソート用番号, y : ソート対象のデータに対応する番号
+bool Compare(uint2 lhs, uint2 rhs)
+{
+	return (lhs.x == rhs.x) ? (lhs.y <= rhs.y) : (lhs.x <= rhs.x);
+}
+
+[numthreads(BITONIC_BLOCK_SIZE, 1, 1)]
+void BitonicSort(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID, uint gi : SV_GroupIndex)
+{
+	// まずは共有メモリ上に対象のデータをロードする。
+	_SharedData[gi] = _Data[dtid.x];
+	GroupMemoryBarrierWithGroupSync();		// グループ内のすべてのデータが共有メモリ上にロードされていることを保証するために同期をとる
+
+	// 共有データ上の値のバイトニック列へのソート
+	// 指定されたレベルから比較する対象へのオフセットをずらしつつ比較していく
+	for(uint j = _Level >> 1; j > 0; j >>= 1)
+	{
+		// ここの論理演算はチョッコし難解
+		// やりたいことはレベルに対して、そのレベルのビットが立っていない番号については昇順に、立っていない番号については降順にすることで
+		// そのレベルでのバイトニック列を作ることができる。
+		// それを論理演算などで済まそうとした場合にこうなる。
+		// 実際にn = 8ぐらいで紙に書いて検算してみるといい。
+		uint2 result = (Compare(_SharedData[gi & ~j], _SharedData[gi | j]) == (bool)(_LevelMask & dtid.x)) ? _SharedData[gi ^ j] : _SharedData[gi];
+		GroupMemoryBarrierWithGroupSync();
+		_SharedData[gi] = result;
+		GroupMemoryBarrierWithGroupSync();
+	}
+
+	// ソートした結果をバッファに格納。
+	_Data[dtid.x] = _SharedData[gi];
+}
+
+groupshared uint2 _TransposeSharedData[TRANSPOSE_BLOCK_SIZE * TRANSPOSE_BLOCK_SIZE];
+
+[numthreads(TRANSPOSE_BLOCK_SIZE, TRANSPOSE_BLOCK_SIZE, 1)]
+void MatrixTranspose(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID, uint gi : SV_GroupIndex)
+{
+	// バイトニックソートと同様に一度対象となるデータを共有メモリ上にロードする。
+	_TransposeSharedData[gi] = _Input[dtid.y * _Width + dtid.x];
+	GroupMemoryBarrierWithGroupSync();
+	// ここから転置先のアドレスを計算し、共有メモリ上の行列から行(x)と列(y)を反転させた値を元のデータに再配置する
+	// そうすると、任意のアドレス分ずれた先の先のデータ同士を隣接させることができる。
+	uint2 address = dtid.yx - gtid.yx + gtid.xy;
+	_Data[address.y * _Height + address.x] = _TransposeSharedData[gtid.x * TRANSPOSE_BLOCK_SIZE + gtid.y];
+}
