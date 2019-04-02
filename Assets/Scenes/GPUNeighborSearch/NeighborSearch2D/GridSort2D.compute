@@ -23,15 +23,16 @@ RWStructuredBuffer<uint2> _GridIndicesBufferWrite;
 cbuffer cb : register(b0)
 {
 	int _ParticleCount;
+	float _GridCellSize;
+
 	float2 _GridDim;
-	float _GridH;
 };
 
 // 座標に対応するグリッド番号を計算する。
 // 小数点以下については、そのグリッド内の正規化された位置。(今回は使わないけど。
 float2 CalcGridAddress(float2 pos)
 {
-	return pos / _GridH;
+	return pos / _GridCellSize;
 }
 
 // 座標に対応するグリッドハッシュ(本当にそう呼ぶかは不明...)
