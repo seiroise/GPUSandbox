@@ -4,9 +4,7 @@
 #pragma kernel RearrangeParticlesCS
 #pragma kernel CopyBuffer
 
-#include "./NeighborSearch2D.cginc"
-
-#define SIMULATION_BLOCK_SIZE (32)
+#include "./../Common/NeighborSearch2D.cginc"
 
 // 対象となるパーティクルを格納するためのバッファ
 StructuredBuffer<Particle2D> _ParticlesBufferRead;

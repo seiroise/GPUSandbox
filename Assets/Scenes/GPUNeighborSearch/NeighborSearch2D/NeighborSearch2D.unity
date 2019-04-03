@@ -215,11 +215,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 1290889532}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 33f19741bae3e8749af8eeddd57bb82b, type: 3}
+  m_Script: {fileID: 11500000, guid: aa468405bb869284f932fa29b39e5f3e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridDim: {x: 21, y: 0}
-  cellSize: 0
+  particleCount: 8192
+  gridCellSize: 1
+  gridDim: {x: 16, y: 16}
+  particleCS: {fileID: 7200000, guid: 53a5e455c36e9e84c821241baf1aaee6, type: 3}
+  displayGridIndex: 0
+  renderingMaterial: {fileID: 2100000, guid: 2e1d33943f924c24ea413de74245a380, type: 2}
+  instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1895339632
 GameObject:
   m_ObjectHideFlags: 0

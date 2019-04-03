@@ -1,0 +1,42 @@
+﻿#pragma kernel UpdateParticleColorCS
+
+#include "./../Common/NeighborSearch2D.cginc"
+
+// パーティクル関連のバッファ
+StructuredBuffer<Particle2D> _ParticlesBufferRead;
+RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
+
+cbuffer cb : register(b0)
+{
+	int2 _DisplayGrid;
+	float _GridCellSize;
+};
+
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void UpdateParticleColorCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint id = dtid.x;
+	Particle2D p = _ParticlesBufferRead[id];
+
+	int2 pGrid = (int2)(p.position / _GridCellSize);
+	int2 diff = _DisplayGrid - pGrid;
+	diff.x = diff.x * diff.x;
+	diff.y = diff.y * diff.y;
+
+	int d = diff.x + diff.y;
+
+	if (d == 0)
+	{
+		p.color = float3(1, 0, 0);
+	}
+	else if (d < 3)
+	{
+		p.color = float3(0, 0, 1);
+	}
+	else
+	{
+		p.color = float3(1, 1, 1);
+	}
+
+	_ParticlesBufferWrite[id] = p;
+}

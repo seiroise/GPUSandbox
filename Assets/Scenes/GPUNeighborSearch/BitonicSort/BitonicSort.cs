@@ -34,7 +34,7 @@ namespace Seiro.GPUSandbox.NS
             public ShaderParameters(ref ComputeShader bitonicCS)
             {
                 bitonicSortKernelId = bitonicCS.FindKernel("BitonicSort");
-                matrixTransposeKernelId = bitonicCS.FindKernel("MmatrixTranspose");
+                matrixTransposeKernelId = bitonicCS.FindKernel("MatrixTranspose");
 
                 levelId = Shader.PropertyToID("_Level");
                 levelMaskId = Shader.PropertyToID("_LevelMask");

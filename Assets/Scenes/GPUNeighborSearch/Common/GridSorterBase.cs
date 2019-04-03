@@ -7,6 +7,7 @@ namespace Seiro.GPUSandbox.NS
 
     // グリッドの次元数はどうしても2Dと3Dで分ける必要はあるので、
     // それらについては派生クラスと、入力するシェーダプロパティでなんとかする。
+	// うーんなんというか、ぱっと見で、このクラスはどのプロパティを設定する必要があるのかがわからない...
     public abstract class GridSorterBase
     {
 		public class ShaderParameters
@@ -52,8 +53,6 @@ namespace Seiro.GPUSandbox.NS
 			}
 		};
 
-		protected static readonly int SIMULATION_BLOCK_SIZE = 32;
-
         protected int _objectCount;
 		protected int _objectStride;
 
@@ -89,16 +88,16 @@ namespace Seiro.GPUSandbox.NS
 
             InitializeBuffer();
 
-            _threadGroupCount = _objectCount / SIMULATION_BLOCK_SIZE;
+            _threadGroupCount = _objectCount / Constants.GRID_SORT_SIMULATION_BLOCK_SIZE;
             _bitonicSort = new BitonicSort(_objectCount, bitonicSortCS);
         }
 		
         public void ReleaseResources()
         {
-            DestroyBuffer(_gridParticlesBuffer);
-            DestroyBuffer(_gridParticlesPingPongBuffer);
-            DestroyBuffer(_gridIndicesBuffer);
-            DestroyBuffer(_sortedObjectsTemporaryBuffer);
+            Functions.DestroyBuffer(ref _gridParticlesBuffer);
+			Functions.DestroyBuffer(ref _gridParticlesPingPongBuffer);
+			Functions.DestroyBuffer(ref _gridIndicesBuffer);
+			Functions.DestroyBuffer(ref _sortedObjectsTemporaryBuffer);
         }
 
         public void GridSort()
@@ -130,15 +129,6 @@ namespace Seiro.GPUSandbox.NS
 			_gridSortCS.Dispatch(_shaderParams.copyBufferKernelId, _threadGroupCount, 1, 1);
         }
 
-        private void DestroyBuffer(ComputeBuffer buffer)
-        {
-            if (buffer != null)
-            {
-                buffer.Release();
-                buffer = null;
-            }
-        }
-
 		private void InitializeBuffer()
 		{
 			_gridParticlesBuffer = new ComputeBuffer(_objectCount, sizeof(uint) * 2);
@@ -148,10 +138,16 @@ namespace Seiro.GPUSandbox.NS
 			_sortedObjectsTemporaryBuffer = new ComputeBuffer(_objectCount, _objectStride);
 		}
 
-        protected virtual void SetShaderParams()
+        private void SetShaderParams()
         {
             _gridSortCS.SetInt(_shaderParams.particleCountConstId, _objectCount);
 			_gridSortCS.SetFloat(_shaderParams.gridCellSizeConstId, _gridCellSize);
+
+			SetGridDim(_shaderParams.gridDimConstId, _gridSortCS);
         }
+
+		// 派生クラスでは必ずこの値を設定する必要がある、逆に言うとこれ以外は設定しなくてもいい。
+		// 正直内部的にどんなベクトル型でもいいっていうのが一番心配な部分。
+		protected abstract void SetGridDim(int shaderPropId, ComputeShader cs);
     }
 }
