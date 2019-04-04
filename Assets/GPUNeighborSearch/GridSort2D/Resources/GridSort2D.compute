@@ -4,7 +4,8 @@
 #pragma kernel RearrangeParticlesCS
 #pragma kernel CopyBuffer
 
-#include "./../Common/NeighborSearch2D.cginc"
+#include "./../../Common/NeighborSearch2D.cginc"
+// #include "Assets/GPUNeighborSearch/Common/NeighborSearch2D.cginc"
 
 // 対象となるパーティクルを格納するためのバッファ
 StructuredBuffer<Particle2D> _ParticlesBufferRead;
@@ -22,7 +23,6 @@ cbuffer cb : register(b0)
 {
 	int _ParticleCount;
 	float _GridCellSize;
-
 	float2 _GridDim;
 };
 

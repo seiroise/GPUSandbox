@@ -9,6 +9,8 @@ RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
 cbuffer cb : register(b0)
 {
 	int2 _DisplayGrid;
+	int _DispGridX;
+	int _DispGridY;
 	float _GridCellSize;
 };
 
@@ -19,11 +21,12 @@ void UpdateParticleColorCS(uint3 dtid : SV_DispatchThreadID)
 	Particle2D p = _ParticlesBufferRead[id];
 
 	int2 pGrid = (int2)(p.position / _GridCellSize);
-	int2 diff = _DisplayGrid - pGrid;
-	diff.x = diff.x * diff.x;
-	diff.y = diff.y * diff.y;
+	// int2 diff = _DisplayGrid - pGrid;
+	int2 diff = int2(_DispGridX - pGrid.x, _DispGridY - pGrid.y);
+	int dx = diff.x * diff.x;
+	int dy = diff.y * diff.y;
 
-	int d = diff.x + diff.y;
+	int d = dx + dy;
 
 	if (d == 0)
 	{
