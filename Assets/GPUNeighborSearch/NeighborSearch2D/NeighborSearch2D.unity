@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657838, g: 0.49641234, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -201,7 +201,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1290889532}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 15.2, y: 1.7, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -218,9 +218,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa468405bb869284f932fa29b39e5f3e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  particleCount: 8192
-  gridCellSize: 2
-  gridDim: {x: 16, y: 16}
+  particleCount: 262144
+  gridCellSize: 1
+  gridDim: {x: 32, y: 32}
   particleCS: {fileID: 7200000, guid: 53a5e455c36e9e84c821241baf1aaee6, type: 3}
   displayGridIndex: 0
   renderingMaterial: {fileID: 2100000, guid: 2e1d33943f924c24ea413de74245a380, type: 2}

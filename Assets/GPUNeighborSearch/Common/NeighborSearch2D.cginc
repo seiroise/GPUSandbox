@@ -6,6 +6,7 @@
 struct Particle2D
 {
 	float2 position;
+	float2 velocity;
 	float3 color;
 };
 

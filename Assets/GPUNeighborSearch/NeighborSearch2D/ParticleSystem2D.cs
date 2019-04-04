@@ -10,20 +10,24 @@ namespace Seiro.GPUSandbox.NS
             public readonly int updateParticleColorKernelId;
 
             public readonly int displayGridConstId;
+			public readonly int gridDimConstId;
             public readonly int gridCellSizeConstId;
 
             public readonly int particlesBufReadId;
             public readonly int particlesBufWriteId;
+			public readonly int gridIndicesBufReadId;
 
             public ShaderProperties(ref ComputeShader cs)
             {
                 updateParticleColorKernelId = cs.FindKernel("UpdateParticleColorCS");
 
                 displayGridConstId = Shader.PropertyToID("_DisplayGrid");
+				gridDimConstId = Shader.PropertyToID("_GridDim");
                 gridCellSizeConstId = Shader.PropertyToID("_GridCellSize");
 
                 particlesBufReadId = Shader.PropertyToID("_ParticlesBufferRead");
                 particlesBufWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
+				gridIndicesBufReadId = Shader.PropertyToID("_GridIndicesBufferRead");
             }
         }
 
@@ -31,11 +35,13 @@ namespace Seiro.GPUSandbox.NS
         public struct Particle2D
         {
             Vector2 position;
+			Vector2 velocity;
             Vector3 color;
 
-            public Particle2D(Vector2 position, Vector3 color)
+            public Particle2D(Vector2 position, Vector2 velocity, Vector3 color)
             {
                 this.position = position;
+				this.velocity = velocity;
                 this.color = color;
             }
         }
@@ -88,17 +94,22 @@ namespace Seiro.GPUSandbox.NS
         {
             if (particleCS == null) return;
 
-            Vector4 displayGrid = new Vector4(displayGridIndex % gridDim.x, displayGridIndex / gridDim.x);
-            // grid sort
+            Vector2Int displayGrid = new Vector2Int(displayGridIndex % gridDim.x, displayGridIndex / gridDim.x);
+			// grid sort
             _gridSorter.GridSort();
 
+			if (Input.GetKeyDown(KeyCode.Space))
+			{
+				_gridSorter.LogGridIndicesForDebug();
+			}
+
             // update particle's color
-            // particleCS.SetVector(_shaderProps.displayGridConstId, displayGrid);
-            particleCS.SetInt("_DispGridX", displayGridIndex % gridDim.x);
-            particleCS.SetInt("_DispGridY", displayGridIndex / gridDim.x);
-            particleCS.SetFloat(_shaderProps.gridCellSizeConstId, gridCellSize);
+			particleCS.SetInts(_shaderProps.displayGridConstId, displayGrid.x, displayGrid.y);
+			particleCS.SetInts(_shaderProps.gridDimConstId, gridDim.x, gridDim.y);
+			particleCS.SetFloat(_shaderProps.gridCellSizeConstId, gridCellSize);
             particleCS.SetBuffer(_shaderProps.updateParticleColorKernelId, _shaderProps.particlesBufReadId, _particlesBufferRead);
             particleCS.SetBuffer(_shaderProps.updateParticleColorKernelId, _shaderProps.particlesBufWriteId, _particlesBufferWrite);
+			particleCS.SetBuffer(_shaderProps.updateParticleColorKernelId, _shaderProps.gridIndicesBufReadId, _gridSorter.gridIndicesBuffer);
             particleCS.Dispatch(_shaderProps.updateParticleColorKernelId, _threadGroupX, 1, 1);
 
             // swap buffer
@@ -123,7 +134,10 @@ namespace Seiro.GPUSandbox.NS
             Vector2 gridRange = gridCellSize * (Vector2)gridDim;
             for (int i = 0, n = _particleCountInt; i < n; ++i)
             {
-                particles[i] = new Particle2D(new Vector2(Random.Range(0f, gridRange.x), Random.Range(0f, gridRange.y)), Vector3.one);
+                particles[i] = new Particle2D(
+					new Vector2(Random.Range(0f, gridRange.x), Random.Range(0f, gridRange.y)),
+					new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)),
+					Vector3.one);
             }
             _particlesBufferRead.SetData(particles);
         }

@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace Seiro.GPUSandbox.NS
@@ -49,7 +50,7 @@ namespace Seiro.GPUSandbox.NS
 
 				particleCountConstId = Shader.PropertyToID("_ParticleCount");
 				gridDimConstId = Shader.PropertyToID("_GridDim");
-				gridCellSizeConstId = Shader.PropertyToID("_GridH");
+				gridCellSizeConstId = Shader.PropertyToID("_GridCellSize");
 			}
 		};
 
@@ -72,6 +73,8 @@ namespace Seiro.GPUSandbox.NS
 
         private int _threadGroupCount;
         private BitonicSort _bitonicSort;
+
+		public ComputeBuffer gridIndicesBuffer { get { return _gridIndicesBuffer; } }
 
         public GridSorterBase(ComputeBuffer targetObjectsBuffer, int gridCellCount, float gridCellSize, ComputeShader gridSortCS, ComputeShader bitonicSortCS)
         {
@@ -128,6 +131,22 @@ namespace Seiro.GPUSandbox.NS
 			_gridSortCS.SetBuffer(_shaderParams.copyBufferKernelId, _shaderParams.particlesBufWriteId, _targetObjectsBuffer);
 			_gridSortCS.Dispatch(_shaderParams.copyBufferKernelId, _threadGroupCount, 1, 1);
         }
+
+		public void LogGridIndicesForDebug()
+		{
+			int count = _gridIndicesBuffer.count;
+			uint[] data = new uint[count * 2];
+			_gridIndicesBuffer.GetData(data);
+
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < count; ++i)
+			{
+				sb.AppendFormat("grid[{0}] : start = {1}, end = {2}", i, data[i * 2], data[i * 2 + 1]);
+				sb.AppendLine();
+			}
+
+			Debug.Log(sb.ToString());
+		}
 
 		private void InitializeBuffer()
 		{

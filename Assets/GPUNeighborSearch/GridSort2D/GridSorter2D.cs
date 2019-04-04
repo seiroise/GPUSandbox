@@ -14,7 +14,7 @@ namespace Seiro.GPUSandbox.NS
 
 		protected override void SetGridDim(int shaderPropId, ComputeShader cs)
 		{
-			cs.SetVector(shaderPropId, new Vector4(_gridDim.x, _gridDim.y));
+			cs.SetInts(shaderPropId, _gridDim.x, _gridDim.y);
 		}
 	}
 }

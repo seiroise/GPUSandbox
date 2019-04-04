@@ -23,7 +23,7 @@ cbuffer cb : register(b0)
 {
 	int _ParticleCount;
 	float _GridCellSize;
-	float2 _GridDim;
+	uint2 _GridDim;
 };
 
 // 座標に対応するグリッド番号を計算する。
@@ -66,7 +66,6 @@ void BuildGridParticlesCS(uint3 dtid : SV_DispatchThreadID)
 
 	float2 pos = _ParticlesBufferRead[pid].position;
 	float2 grid = CalcGridAddress(pos);
-
 	_GridParticlePairBufferWrite[pid] = MakeKeyValuePair((uint2)grid, pid);
 }
 

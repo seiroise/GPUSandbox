@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace Seiro.GPUSandbox.NS
@@ -70,6 +71,8 @@ namespace Seiro.GPUSandbox.NS
                 // 計算用のバッファを設定してそのままソートする。
                 _bitonicCS.SetBuffer(_params.bitonicSortKernelId, _params.dataBufId, inBuffer);
                 _bitonicCS.Dispatch(_params.bitonicSortKernelId, _numElements / BITONIC_BLOCK_SIZE, 1, 1);
+
+				// LogForDebug(inBuffer);
             }
 
             // ソートを行う範囲が、BITONIC_BLOCK_SIZEよりも大きい場合はここから先の処理を行う。
@@ -114,5 +117,26 @@ namespace Seiro.GPUSandbox.NS
             cs.SetInt(_params.widthId, width);
             cs.SetInt(_params.heightId, height);
         }
+
+		void LogForDebug(ComputeBuffer inBuffer)
+		{
+			if (inBuffer.stride != sizeof(uint) * 2)
+			{
+				return;
+			}
+
+			int count = inBuffer.count;
+			uint[] data = new uint[count * 2];
+			inBuffer.GetData(data);
+
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < count; ++i)
+			{
+				sb.AppendFormat("data[{0}] : grid = {1}, id = {2}", i, data[i * 2], data[i * 2 + 1]);
+				sb.AppendLine();
+			}
+
+			Debug.Log(sb.ToString());
+		}
     }
 }

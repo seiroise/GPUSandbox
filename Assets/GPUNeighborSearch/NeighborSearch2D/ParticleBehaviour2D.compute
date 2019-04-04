@@ -6,40 +6,44 @@
 StructuredBuffer<Particle2D> _ParticlesBufferRead;
 RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
 
+// グリッド毎のパーティクル開始/終了番号の一覧
+StructuredBuffer<uint2> _GridIndicesBufferRead;
+
 cbuffer cb : register(b0)
 {
 	int2 _DisplayGrid;
-	int _DispGridX;
-	int _DispGridY;
+	int2 _GridDim;
 	float _GridCellSize;
 };
 
+// 自分の周囲のパーティクルの量に応じて色を変化させる。
 [numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
 void UpdateParticleColorCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint id = dtid.x;
 	Particle2D p = _ParticlesBufferRead[id];
-
 	int2 pGrid = (int2)(p.position / _GridCellSize);
-	// int2 diff = _DisplayGrid - pGrid;
-	int2 diff = int2(_DispGridX - pGrid.x, _DispGridY - pGrid.y);
-	int dx = diff.x * diff.x;
-	int dy = diff.y * diff.y;
 
-	int d = dx + dy;
+	// 自分の周囲にあるパーティクルの数に応じて色を変える
+	int2 minGrid = int2(max(pGrid.x - 1, 0), max(pGrid.y - 1, 0));
+	int2 maxGrid = int2(min(pGrid.x + 1, _GridDim.x), min(pGrid.y + 1, _GridDim.y));
 
-	if (d == 0)
+	uint neighborCount = 0u;
+	for (int y = minGrid.y; y < maxGrid.y; ++y)
 	{
-		p.color = float3(1, 0, 0);
-	}
-	else if (d < 3)
-	{
-		p.color = float3(0, 0, 1);
-	}
-	else
-	{
-		p.color = float3(1, 1, 1);
-	}
+		for (int x = minGrid.x; x < maxGrid.x; ++x)
+		{			
+			uint gridId = y * _GridDim.x + x;
+			uint2 iteRange = _GridIndicesBufferRead[gridId];
 
+			for (uint i = iteRange.x; i < iteRange.y; ++i)
+			{
+				Particle2D pOther = _ParticlesBufferRead[i];
+				float2 dd = pOther.position - p.position;
+				neighborCount += step(dot(dd, dd), 1);
+			}
+		}
+	}
+	p.color = float3(neighborCount / 50.f, 0, 0);
 	_ParticlesBufferWrite[id] = p;
 }
