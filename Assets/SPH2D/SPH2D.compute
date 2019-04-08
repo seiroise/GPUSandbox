@@ -1,0 +1,153 @@
+﻿// 2DでのSPH法による流体のシミュレーション
+// 密度、圧力、圧力項 + 粘性項 + 外力項、差分法による速度と位置の更新
+// 基本的にはこの方針で解く
+
+#pragma kernel DensityCS
+#pragma kernel PressureCS
+#pragma kernel ForceCS
+#pragma kernel IntegrateCS
+
+#define SIMULATION_BLOCK_SIZE 512
+
+struct Particle2D
+{
+	float2 position;
+	float2 velocity;
+	float2 acceleration;
+	float density;
+	float pressure;
+};
+
+cbuffer cb : register(b0)
+{
+	uint _ParticleCount;			// パーティクル数
+	float _Smoothlen;				// パーティクルの平滑化距離
+
+	float _DensityKernelCoef;		// 密度カーネル関数の係数
+	float _PressureKernelCoef;		// 圧力カーネル関数の係数
+	float _ViscosityKernelCoef;		// 粘性カーネル関数の係数
+
+	float _PressureStiffness;		// 圧力定数
+	float _RestDensity;				// 安定密度(対象流体の密度
+
+	float _Viscosity;				// 動粘性係数
+};
+
+StructuredBuffer<Particle2D> _ParticlesBufferRead;
+RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
+
+// 密度計算のカーネル関数(poly6 kernel)
+inline float CalcDensity(float sq_r)
+{
+	const float sq_h = _Smoothlen * _Smoothlen;
+	return _DensityKernelCoef * (sq_h - sq_r) * (sq_h - sq_r) * (sq_h - sq_r);
+}
+
+// 密度から圧力の計算
+// 圧力定数B(_PressureStiffness)は正確に計算すべき。(でもリアルタイム向きではない
+inline float CalcPressure(float density)
+{
+	return _PressureStiffness * max(pow(density / _RestDensity, 7) - 1, 0);
+}
+
+// 圧力勾配の計算
+inline float2 CalcGradPressure(float r, float2 diff, float p_press, float q_press, float q_dens)
+{
+	const float h = _Smoothlen;
+	float avg_press = (p_press + q_press) * 0.5f;
+	float coef = _PressureKernelCoef * avg_press / q_dens * (h - r) * (h - r) / r;
+	return coef * diff;	// floatだけで計算して最後にfloat2を掛けるほうが早い？
+}
+
+// 粘性の計算
+inline float2 CalcLapViscosity(float r, float2 p_vel, float2 q_vel, float q_dens)
+{
+	const float h = _Smoothlen;
+	float2 diff_vel = q_vel - p_vel;
+	float coef = _ViscosityKernelCoef / q_dens * (h - r);
+	return coef * diff_vel;
+}
+
+// それぞれのパーティクル(離散化観測点)の密度を計算
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void DensityCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	Particle2D p = _ParticlesBufferRead[pid];
+	float2 p_pos = p.position;
+
+	float sq_h = _Smoothlen * _Smoothlen;
+	float density = 0;
+	for(uint i = 0; i < _ParticleCount; ++i)
+	{
+		if(i == pid) continue;
+
+		Particle2D q = _ParticlesBufferRead[i];
+		float2 diff = p_pos - q.position;
+		float sq_r = dot(diff, diff);
+
+		if(sq_h < sq_r)
+		{
+			// massはdensity kernel coefに含めている想定
+			density += CalcDensity(sq_r);
+		}
+	}
+	p.density = density;
+	_ParticlesBufferWrite[pid] = p;
+}
+
+// 圧力項の計算のために事前に密度から圧力を計算しておく
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void PressureCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	Particle2D p = _ParticlesBufferRead[pid];
+	p.pressure = CalcPressure(p.density);
+	_ParticlesBufferWrite[pid] = p;
+}
+
+// 圧力項、粘性項、外力項の計算
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void ForceCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	Particle2D p = _ParticlesBufferRead[pid];
+
+	float sq_h = _Smoothlen * _Smoothlen;
+
+	float2 press = float2(0, 0);
+	float2 visco = float2(0, 0);
+
+	for(uint i = 0; i < _ParticleCount; ++i)
+	{
+		if(pid == i) continue;
+
+		Particle2D q = _ParticlesBufferRead[i];
+
+		float2 diff = p.position - q.position;
+		float sq_r = dot(diff, diff);
+
+		if(sq_h < sq_r)
+		{
+			float r = sqrt(sq_r);
+
+			// 基本的にmassや係数の正負は定数係数として処理する
+			press += CalcGradPressure(r, diff, p.pressure, q.pressure, q.density);
+			visco += CalcLapViscosity(r, p.velocity, q.velocity, q.density);
+		}
+	}
+
+	// 合成
+	// 圧力項のマイナスは係数として処理
+	// 外力はこのあとのIntegrateCSにて処理
+	// du/dt = (1 / dens) * f
+	// f = visco * lap_vel - grad_press + {(1 / dens) * f_ext}
+	float2 force = press + _Viscosity * visco;
+	p.acceleration = force / p.density;
+}
+
+[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+void IntegrateCS(uint3 dtid : SV_DispatchThreadID)
+{
+
+}
