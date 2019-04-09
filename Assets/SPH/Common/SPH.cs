@@ -1,10 +1,10 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-namespace Seiro.GPUSandbox.NS
+namespace Seiro.GPUSandbox.SPH
 {
     public static class Constants
     {
-        public static readonly int GRID_SORT_SIMULATION_BLOCK_SIZE = 32;
+        public static readonly int SIMULATION_BLOCK_SIZE = 512;
     }
 
     public enum ParticleCount
