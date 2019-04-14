@@ -20,6 +20,7 @@ struct Particle2D
 
 cbuffer cb : register(b0)
 {
+	float _Timestep;				// 時間刻み幅
 	uint _ParticleCount;			// パーティクル数
 	float _Smoothlen;				// パーティクルの平滑化距離
 
@@ -33,9 +34,12 @@ cbuffer cb : register(b0)
 	float _Viscosity;				// 動粘性係数
 
 	float2 _Gravity;				// 重力加速度
-
-	float _Timestep;				// 時間刻み幅
+	float2 _Range;					// シミュレーション範囲
+	float _WallStiffness;			// 壁の反発力
 	
+	bool _MouseDown;				// マウス押下判定
+	float2 _MousePosition;			// マウス位置
+	float _MouseRadius;				// マウス半径
 };
 
 StructuredBuffer<Particle2D> _ParticlesBufferRead;
@@ -45,7 +49,8 @@ RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
 inline float CalcDensity(float sq_r)
 {
 	const float sq_h = _Smoothlen * _Smoothlen;
-	return _DensityKernelCoef * (sq_h - sq_r) * (sq_h - sq_r) * (sq_h - sq_r);
+	const float d = max(sq_h - sq_r, 0.001f);
+	return _DensityKernelCoef * d * d * d;
 }
 
 // 密度から圧力の計算
@@ -91,7 +96,7 @@ void DensityCS(uint3 dtid : SV_DispatchThreadID)
 		float2 diff = p_pos - q.position;
 		float sq_r = dot(diff, diff);
 
-		if(sq_h < sq_r)
+		if(sq_r < sq_h)
 		{
 			// massはdensity kernel coefに含めている想定
 			density += CalcDensity(sq_r);
@@ -132,9 +137,9 @@ void ForceCS(uint3 dtid : SV_DispatchThreadID)
 		float2 diff = p.position - q.position;
 		float sq_r = dot(diff, diff);
 
-		if(sq_h < sq_r)
+		if(sq_r < sq_h)
 		{
-			float r = sqrt(sq_r);
+			float r = max(sqrt(sq_r), 0.01f);
 
 			// 基本的にmassや係数の正負は定数係数として処理する
 			press += CalcGradPressure(r, diff, p.pressure, q.pressure, q.density);
@@ -147,8 +152,9 @@ void ForceCS(uint3 dtid : SV_DispatchThreadID)
 	// 外力はこのあとのIntegrateCSにて処理
 	// du/dt = (1 / dens) * f
 	// f = visco * lap_vel - grad_press + {(1 / dens) * f_ext}
-	float2 force = press + _Viscosity * visco;
+	float2 force = -press + _Viscosity * visco;
 	p.acceleration = force / p.density;
+	_ParticlesBufferWrite[pid] = p;
 }
 
 [numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
@@ -161,6 +167,20 @@ void IntegrateCS(uint3 dtid : SV_DispatchThreadID)
 	float2 velocity = p.velocity;
 	float2 acceleration = p.acceleration;
 
+	// マウスインタラクション
+	if(_MouseDown && distance(position, _MousePosition) < _MouseRadius)
+	{
+		float2 dir = position - _MousePosition;
+		float pushBack = _MouseRadius - length(dir);
+		acceleration += 100.0f * pushBack * normalize(dir);
+	}
+
+	// 壁境界
+	acceleration += min(position.x, 0) * -_WallStiffness * float2(1, 0);
+	acceleration += min(position.y, 0) * -_WallStiffness * float2(0, 1);
+	acceleration += max(position.x - _Range.x, 0) * _WallStiffness * float2(-1, 0);
+	acceleration += max(position.y - _Range.y, 0) * _WallStiffness * float2(0, -1);
+
 	// 外力項
 	acceleration += _Gravity;
 
@@ -172,5 +192,5 @@ void IntegrateCS(uint3 dtid : SV_DispatchThreadID)
 	p.velocity = velocity;
 	p.position = position;
 
-	_ParticlesBufferWrite[pid];
+	_ParticlesBufferWrite[pid]= p;
 }
