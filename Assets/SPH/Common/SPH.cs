@@ -1,4 +1,7 @@
+using System;
+using System.Runtime.InteropServices;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Seiro.GPUSandbox.SPH
 {
@@ -20,6 +23,16 @@ namespace Seiro.GPUSandbox.SPH
         N_130K = 1 << 17,
         N_260K = 1 << 18,
     }
+
+	[Serializable, StructLayout(LayoutKind.Sequential)]
+	public struct Particle2D
+	{
+		public Vector2 position;
+		public Vector2 velocity;
+		public Vector2 acceleration;
+		public float density;
+		public float pressure;
+	}
 
     public static class Functions
     {

@@ -1,12 +1,13 @@
-﻿Shader "Seiro/NeighborSearch/SimpleInstancing"
+﻿Shader "Seiro/SPH/SPH2D_SimpleInstancing"
 {
 	Properties
 	{
-		_MainTex ("Texture", 2D) = "white" {}
+		_MainTex("Texture", 2D) = "white" {}
+		_Dye("Dye", Vector) = (1.0, 1.0, 1.0, 1.0)
 	}
 	SubShader
 	{
-		Tags { "Queue"="Transparent" "RenderType"="Transparent" }
+		Tags { "Queue"="Transparent" "RenderType"="Transparet" }
 		Cull Off ZWrite Off
 		Blend SrcAlpha OneMinusSrcAlpha
 
@@ -19,7 +20,7 @@
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
-			#include "./../Common/NeighborSearch2D.cginc"
+			#include "./../Common/SPH.cginc"
 
 			struct appdata
 			{
@@ -29,13 +30,14 @@
 
 			struct v2f
 			{
-				float2 uv : TEXCOORD0;
 				float4 vertex : SV_POSITION;
+				float2 uv : TEXCOORD0;
 				float4 color : COLOR;
 			};
 
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
+			float4 _Dye;
 
 #if SHADER_TARGET >= 45
 			StructuredBuffer<Particle2D> buf;
@@ -45,12 +47,12 @@
 			{
 				Particle2D p = buf[id];
 
-				float2 localPosition = v.vertex.xy + p.position.xy;
+				float2 localPosition = v.vertex.xy + p.position;
 
 				v2f o;
 				o.vertex = mul(UNITY_MATRIX_VP, float4(localPosition, 0.0, 1.0));
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				o.color = float4(p.color, 1.0);
+				o.color = float4(p.density, p.pressure, 1.0, 1.0) * _Dye;
 				return o;
 			}
 

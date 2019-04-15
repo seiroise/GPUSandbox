@@ -7,16 +7,7 @@
 #pragma kernel ForceCS
 #pragma kernel IntegrateCS
 
-#define SIMULATION_BLOCK_SIZE 512
-
-struct Particle2D
-{
-	float2 position;
-	float2 velocity;
-	float2 acceleration;
-	float density;
-	float pressure;
-};
+#include "./../Common/SPH.cginc"
 
 cbuffer cb : register(b0)
 {

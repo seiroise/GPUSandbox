@@ -8,109 +8,107 @@ using Random = UnityEngine.Random;
 
 namespace Seiro.GPUSandbox.SPH
 {
-    public class SPHParticleSystem2D : MonoBehaviour
-    {
-        [Serializable]
-        public struct Particle2D
-        {
-            public Vector2 position;
-            public Vector2 velocity;
-            public Vector2 acceleration;
-            public float density;
-            public float pressure;
-        };
+	public class SPHParticleSystem2D : MonoBehaviour
+	{
 
-        public class ShaderProperties
-        {
-            // kernel
-            public readonly int densityKernelId;
-            public readonly int pressureKernelId;
-            public readonly int forceKernelId;
-            public readonly int integrateKernelId;
+		public class ShaderProperties
+		{
+			// kernel
+			public readonly int densityKernelId;
+			public readonly int pressureKernelId;
+			public readonly int forceKernelId;
+			public readonly int integrateKernelId;
 
-            // buffer
-            public readonly int particlesBufferReadId;
-            public readonly int particlesBufferWriteId;
+			// buffer
+			public readonly int particlesBufferReadId;
+			public readonly int particlesBufferWriteId;
 
-            //constant variable
-            public readonly int timestepConstId;
-            public readonly int particleCountConstId;
-            public readonly int smoothlenConstId;
-            public readonly int densityKernelCoefConstId;
-            public readonly int pressureKernelCoefConstId;
-            public readonly int viscosityKernelCoefConstId;
-            public readonly int pressureStiffnessConstId;
-            public readonly int restDensityConstId;
-            public readonly int viscosityConstId;
+			//constant variable
+			public readonly int timestepConstId;
+			public readonly int particleCountConstId;
+			public readonly int smoothlenConstId;
+			public readonly int densityKernelCoefConstId;
+			public readonly int pressureKernelCoefConstId;
+			public readonly int viscosityKernelCoefConstId;
+			public readonly int pressureStiffnessConstId;
+			public readonly int restDensityConstId;
+			public readonly int viscosityConstId;
 
-            public readonly int gravityConstId;
-            public readonly int rangeConstId;
-            public readonly int wallStiffnessConstId;
+			public readonly int gravityConstId;
+			public readonly int rangeConstId;
+			public readonly int wallStiffnessConstId;
 
-            public readonly int mouseDownConstId;
-            public readonly int mousePositionConstId;
-            public readonly int mouseRadiusConstId;
+			public readonly int mouseDownConstId;
+			public readonly int mousePositionConstId;
+			public readonly int mouseRadiusConstId;
 
-            public ShaderProperties(ref ComputeShader cs)
-            {
-                densityKernelId = cs.FindKernel("DensityCS");
-                pressureKernelId = cs.FindKernel("PressureCS");
-                forceKernelId = cs.FindKernel("ForceCS");
-                integrateKernelId = cs.FindKernel("IntegrateCS");
+			public ShaderProperties(ref ComputeShader cs)
+			{
+				densityKernelId = cs.FindKernel("DensityCS");
+				pressureKernelId = cs.FindKernel("PressureCS");
+				forceKernelId = cs.FindKernel("ForceCS");
+				integrateKernelId = cs.FindKernel("IntegrateCS");
 
-                particlesBufferReadId = Shader.PropertyToID("_ParticlesBufferRead");
-                particlesBufferWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
+				particlesBufferReadId = Shader.PropertyToID("_ParticlesBufferRead");
+				particlesBufferWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
 
-                timestepConstId = Shader.PropertyToID("_Timestep");
-                particleCountConstId = Shader.PropertyToID("_ParticleCount");
-                smoothlenConstId = Shader.PropertyToID("_Smoothlen");
-                densityKernelCoefConstId = Shader.PropertyToID("_DensityKernelCoef");
-                pressureKernelCoefConstId = Shader.PropertyToID("_PressureKernelCoef");
-                viscosityKernelCoefConstId = Shader.PropertyToID("_ViscosityKernelCoef");
-                pressureStiffnessConstId = Shader.PropertyToID("_PressureStiffness");
-                restDensityConstId = Shader.PropertyToID("_RestDensity");
-                viscosityConstId = Shader.PropertyToID("_Viscosity");
+				timestepConstId = Shader.PropertyToID("_Timestep");
+				particleCountConstId = Shader.PropertyToID("_ParticleCount");
+				smoothlenConstId = Shader.PropertyToID("_Smoothlen");
+				densityKernelCoefConstId = Shader.PropertyToID("_DensityKernelCoef");
+				pressureKernelCoefConstId = Shader.PropertyToID("_PressureKernelCoef");
+				viscosityKernelCoefConstId = Shader.PropertyToID("_ViscosityKernelCoef");
+				pressureStiffnessConstId = Shader.PropertyToID("_PressureStiffness");
+				restDensityConstId = Shader.PropertyToID("_RestDensity");
+				viscosityConstId = Shader.PropertyToID("_Viscosity");
 
-                gravityConstId = Shader.PropertyToID("_Gravity");
-                rangeConstId = Shader.PropertyToID("_Range");
-                wallStiffnessConstId = Shader.PropertyToID("_WallStiffness");
+				gravityConstId = Shader.PropertyToID("_Gravity");
+				rangeConstId = Shader.PropertyToID("_Range");
+				wallStiffnessConstId = Shader.PropertyToID("_WallStiffness");
 
-                mouseDownConstId = Shader.PropertyToID("_MouseDown");
-                mousePositionConstId = Shader.PropertyToID("_MousePosition");
-                mouseRadiusConstId = Shader.PropertyToID("_MouseRadius");
-            }
-        }
+				mouseDownConstId = Shader.PropertyToID("_MouseDown");
+				mousePositionConstId = Shader.PropertyToID("_MousePosition");
+				mouseRadiusConstId = Shader.PropertyToID("_MouseRadius");
+			}
+		}
 
-        public ComputeShader fluidCS;                               // 流体シミュレーション用のコンピュートシェーダ
-        public ParticleCount particleCount = ParticleCount.N_8K;    // パーティクル数
-        public float smoothlen = 0.012f;                            // 粒子半径
-        public float particleMass = 0.0002f;                        // パーティクル質量
-        public float restDensity = 1000.0f;                         // 対象物体の密度
-        [Space]
-        public float pressureStiffness = 200.0f;                    // 圧力項係数
-        public float viscosity = 0.1f;                              // 粘性係数
-        [Space]
-        public Vector2 gravity = new Vector2(0.0f, -0.5f);          // 重力加速度
-        public Vector2 range = new Vector2(10f, 5f);                // シミュレーション領域
-        public float wallStiffness = 100f;
-        public float mouseRadius = 1f;
-        [Space]
-        public bool doSimulate = true;
-        [Range(1, 32)]
-        public int maxIterations = 8;
-        [Range(0.0001f, 0.005f)]
-        public float timestep = 0.001f;
-        public bool debugDraw = false;
+		public ComputeShader fluidCS = null;                        // 流体シミュレーション用のコンピュートシェーダ
+		public ParticleCount particleCount = ParticleCount.N_8K;    // パーティクル数
+		public float smoothlen = 0.012f;                            // 粒子半径
+		public float particleMass = 0.0002f;                        // パーティクル質量
+		public float restDensity = 1000.0f;                         // 対象物体の密度
+		[Space]
+		public float pressureStiffness = 200.0f;                    // 圧力項係数
+		public float viscosity = 0.1f;                              // 粘性係数
+		[Space]
+		public Vector2 gravity = new Vector2(0.0f, -0.5f);          // 重力加速度
+		public Vector2 range = new Vector2(10f, 5f);                // シミュレーション領域
+		public float wallStiffness = 100f;
+		public float mouseRadius = 1f;
+		[Space]
+		public bool doSimulate = true;
+		[Range(1, 32)]
+		public int maxIterations = 8;
+		[Range(0.0001f, 0.02f)]
+		public float timestep = 0.001f;
+		[Space]
+		public Material instancingMat = null;
+		public Mesh instancingMesh = null;
 
-        private int _particleCountInt;
-        private float _densityCoef;
-        private float _pressureGradCoef;
-        private float _viscosityLapCoef;
+		public bool debugDraw = false;
 
-        private ComputeBuffer _particlesBufferRead;
-        private ComputeBuffer _particlesBufferWrite;
+		private int _particleCountInt;
+		private float _densityCoef;
+		private float _pressureGradCoef;
+		private float _viscosityLapCoef;
 
-        private ShaderProperties _shaderProperties;
+		private ComputeBuffer _particlesBufferRead = null;
+		private ComputeBuffer _particlesBufferWrite = null;
+
+		private ShaderProperties _shaderProperties = null;
+
+		private uint[] _instancingArgs = {0, 0, 0, 0, 0};
+		private ComputeBuffer _instancingArgsBuffer = null;
 
         Particle2D[] _debugBuffer = null;
 
@@ -123,7 +121,8 @@ namespace Seiro.GPUSandbox.SPH
             _particleCountInt = (int)particleCount;
             _shaderProperties = new ShaderProperties(ref fluidCS);
             InitParticlesBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
-            CalcCoef();
+			InitRendering();
+			CalcCoef();
         }
 
         private void Update()
@@ -131,12 +130,15 @@ namespace Seiro.GPUSandbox.SPH
             if (doSimulate)
             {
                 int iterations = Mathf.Min(Mathf.FloorToInt(Time.deltaTime / timestep), maxIterations);
-                for (int i = 0; i < iterations; ++i)
+				if (iterations == 0) iterations = 1;
+				for (int i = 0; i < iterations; ++i)
                 {
                     SetShaderProperties();
                     Simulate();
                 }
             }
+
+			RenderParticles();
         }
 
         private void OnDestroy()
@@ -148,23 +150,6 @@ namespace Seiro.GPUSandbox.SPH
         private void OnDrawGizmos()
         {
             Gizmos.DrawWireCube(range * 0.5f, range);
-            if (!debugDraw || !Application.isPlaying)
-            {
-                return;
-            }
-
-            if (_debugBuffer == null || _debugBuffer.Length != _particleCountInt)
-            {
-                _debugBuffer = new Particle2D[_particleCountInt];
-            }
-            _particlesBufferRead.GetData(_debugBuffer);
-            for (int i = 0, n = _particleCountInt; i < n; ++i)
-            {
-                Particle2D p = _debugBuffer[i];
-                Gizmos.DrawCube(p.position, Vector3.one * smoothlen * 0.5f);
-                // Gizmos.color = Color.green;
-                // Gizmos.DrawLine(p.position, p.position + p.acceleration);
-            }
         }
 
         // 各種物理量の計算に使用する定数係数の事前計算。
@@ -201,6 +186,21 @@ namespace Seiro.GPUSandbox.SPH
             pongBuffer = new ComputeBuffer(count, stride);
             pongBuffer.SetData(particles);
         }
+
+		// レンダリング関係の初期化
+		private void InitRendering()
+		{
+			if (instancingMat == null || instancingMesh == null)
+			{
+				return;
+			}
+
+			_instancingArgsBuffer = new ComputeBuffer(1, sizeof(uint) * 5, ComputeBufferType.IndirectArguments);
+			uint indexCount = instancingMesh.GetIndexCount(0);
+			_instancingArgs[0] = indexCount;
+			_instancingArgs[1] = (uint)_particleCountInt;
+			_instancingArgsBuffer.SetData(_instancingArgs);
+		}
 
         // シェーダ内の定数の設定
         private void SetShaderProperties()
@@ -278,5 +278,17 @@ namespace Seiro.GPUSandbox.SPH
             // 計算用バッファの切替
             SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
         }
+
+		private void RenderParticles()
+		{
+			if (instancingMat == null || instancingMesh == null)
+			{
+				return;
+			}
+
+			instancingMat.SetPass(0);
+			instancingMat.SetBuffer("buf", _particlesBufferRead);
+			Graphics.DrawMeshInstancedIndirect(instancingMesh, 0, instancingMat, new Bounds(range * 0.5f, range), _instancingArgsBuffer);
+		}
     }
 }
