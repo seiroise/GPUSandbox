@@ -1,0 +1,35 @@
+﻿// グリッドソートを使用し、近傍探索を効率化したSPH法のシミュレーション
+// 基本的な方針は普通のSPHと変わらないが、smoothingで積分するところが主に違う。
+
+#pragma kernel DensityCS
+#pragma kernel PressureCS
+#pragma kernel ForceCS
+#pragma kernel IntegrateCS
+
+#include "./../Common/SPH.cginc"
+
+cbuffer cb : register(b0)
+{
+	float _Timestep;
+	uint _ParticleCount;
+	float _Smoothlen;
+	float _DensityKernelCoef;
+	float _PressureKernelCoef;
+	float _ViscosityKernelCoef;
+	float _PressureStiffness;
+	float _RestDensity;
+	float _Viscosity;
+
+	float2 _Gravity;
+	float2 _Range;
+	float _WallStiffness;
+
+	bool _MouseDown;
+	float2 _MousePosition;
+	float _MouseRadius;
+}
+
+StructuredBuffer<Particle2D> _ParticlesBufferRead;
+RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
+
+StructuredBuffer<uint2> _IndicesBufferRead;
