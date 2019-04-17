@@ -11,67 +11,6 @@ namespace Seiro.GPUSandbox.SPH
 	public class SPHParticleSystem2D : MonoBehaviour
 	{
 
-		public class ShaderProperties
-		{
-			// kernel
-			public readonly int densityKernelId;
-			public readonly int pressureKernelId;
-			public readonly int forceKernelId;
-			public readonly int integrateKernelId;
-
-			// buffer
-			public readonly int particlesBufferReadId;
-			public readonly int particlesBufferWriteId;
-
-			//constant variable
-			public readonly int timestepConstId;
-			public readonly int particleCountConstId;
-			public readonly int smoothlenConstId;
-			public readonly int densityKernelCoefConstId;
-			public readonly int pressureKernelCoefConstId;
-			public readonly int viscosityKernelCoefConstId;
-			public readonly int pressureStiffnessConstId;
-			public readonly int restDensityConstId;
-			public readonly int viscosityConstId;
-
-			public readonly int gravityConstId;
-			public readonly int rangeConstId;
-			public readonly int wallStiffnessConstId;
-
-			public readonly int mouseDownConstId;
-			public readonly int mousePositionConstId;
-			public readonly int mouseRadiusConstId;
-
-			public ShaderProperties(ref ComputeShader cs)
-			{
-				densityKernelId = cs.FindKernel("DensityCS");
-				pressureKernelId = cs.FindKernel("PressureCS");
-				forceKernelId = cs.FindKernel("ForceCS");
-				integrateKernelId = cs.FindKernel("IntegrateCS");
-
-				particlesBufferReadId = Shader.PropertyToID("_ParticlesBufferRead");
-				particlesBufferWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
-
-				timestepConstId = Shader.PropertyToID("_Timestep");
-				particleCountConstId = Shader.PropertyToID("_ParticleCount");
-				smoothlenConstId = Shader.PropertyToID("_Smoothlen");
-				densityKernelCoefConstId = Shader.PropertyToID("_DensityKernelCoef");
-				pressureKernelCoefConstId = Shader.PropertyToID("_PressureKernelCoef");
-				viscosityKernelCoefConstId = Shader.PropertyToID("_ViscosityKernelCoef");
-				pressureStiffnessConstId = Shader.PropertyToID("_PressureStiffness");
-				restDensityConstId = Shader.PropertyToID("_RestDensity");
-				viscosityConstId = Shader.PropertyToID("_Viscosity");
-
-				gravityConstId = Shader.PropertyToID("_Gravity");
-				rangeConstId = Shader.PropertyToID("_Range");
-				wallStiffnessConstId = Shader.PropertyToID("_WallStiffness");
-
-				mouseDownConstId = Shader.PropertyToID("_MouseDown");
-				mousePositionConstId = Shader.PropertyToID("_MousePosition");
-				mouseRadiusConstId = Shader.PropertyToID("_MouseRadius");
-			}
-		}
-
 		public ComputeShader fluidCS = null;                        // 流体シミュレーション用のコンピュートシェーダ
 		public ParticleCount particleCount = ParticleCount.N_8K;    // パーティクル数
 		public float smoothlen = 0.012f;                            // 粒子半径
@@ -86,7 +25,7 @@ namespace Seiro.GPUSandbox.SPH
 		public float wallStiffness = 100f;
 		public float mouseRadius = 1f;
 		[Space]
-		public bool doSimulate = true;
+		public bool simulate = true;
 		[Range(1, 32)]
 		public int maxIterations = 8;
 		[Range(0.0001f, 0.02f)]
@@ -94,6 +33,8 @@ namespace Seiro.GPUSandbox.SPH
 		[Space]
 		public Material instancingMat = null;
 		public Mesh instancingMesh = null;
+		[Range(0.01f, 2f)]
+		public float particleScale = 1f;
 
 		public bool debugDraw = false;
 
@@ -105,12 +46,10 @@ namespace Seiro.GPUSandbox.SPH
 		private ComputeBuffer _particlesBufferRead = null;
 		private ComputeBuffer _particlesBufferWrite = null;
 
-		private ShaderProperties _shaderProperties = null;
+		private SPHShaderProps _shaderProps = null;
 
 		private uint[] _instancingArgs = {0, 0, 0, 0, 0};
 		private ComputeBuffer _instancingArgsBuffer = null;
-
-        Particle2D[] _debugBuffer = null;
 
         private void Start()
         {
@@ -119,7 +58,7 @@ namespace Seiro.GPUSandbox.SPH
                 return;
             }
             _particleCountInt = (int)particleCount;
-            _shaderProperties = new ShaderProperties(ref fluidCS);
+            _shaderProps = new SPHShaderProps(ref fluidCS);
             InitParticlesBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
 			InitRendering();
 			CalcCoef();
@@ -127,13 +66,13 @@ namespace Seiro.GPUSandbox.SPH
 
         private void Update()
         {
-            if (doSimulate)
+            if (simulate)
             {
                 int iterations = Mathf.Min(Mathf.FloorToInt(Time.deltaTime / timestep), maxIterations);
-				if (iterations == 0) iterations = 1;
+				if (iterations <= 0) iterations = 1;
+				SetShaderProperties();
 				for (int i = 0; i < iterations; ++i)
                 {
-                    SetShaderProperties();
                     Simulate();
                 }
             }
@@ -166,11 +105,11 @@ namespace Seiro.GPUSandbox.SPH
         // パーティクルバッファの初期化
         private void InitParticlesBuffer(ref ComputeBuffer pingBuffer, ref ComputeBuffer pongBuffer)
         {
-            Particle2D[] particles = new Particle2D[_particleCountInt];
+            SPH_Particle2D[] particles = new SPH_Particle2D[_particleCountInt];
             Vector2 center = range * 0.5f;
             for (int i = 0, n = _particleCountInt; i < n; ++i)
             {
-                Particle2D p = new Particle2D();
+                SPH_Particle2D p = new SPH_Particle2D();
                 p.position = Random.insideUnitCircle * range * 0.5f + center;
                 p.velocity = Vector2.zero;
                 p.acceleration = Vector2.zero;
@@ -180,7 +119,7 @@ namespace Seiro.GPUSandbox.SPH
             }
 
             int count = _particleCountInt;
-            int stride = Marshal.SizeOf(typeof(Particle2D));
+            int stride = Marshal.SizeOf(typeof(SPH_Particle2D));
             pingBuffer = new ComputeBuffer(count, stride);
             pingBuffer.SetData(particles);
             pongBuffer = new ComputeBuffer(count, stride);
@@ -210,19 +149,19 @@ namespace Seiro.GPUSandbox.SPH
                 return;
             }
 
-            fluidCS.SetInt(_shaderProperties.particleCountConstId, _particleCountInt);
-            fluidCS.SetFloat(_shaderProperties.smoothlenConstId, smoothlen);
-            fluidCS.SetFloat(_shaderProperties.densityKernelCoefConstId, _densityCoef);
-            fluidCS.SetFloat(_shaderProperties.pressureKernelCoefConstId, _pressureGradCoef);
-            fluidCS.SetFloat(_shaderProperties.viscosityKernelCoefConstId, _viscosityLapCoef);
-            fluidCS.SetFloat(_shaderProperties.pressureStiffnessConstId, pressureStiffness);
-            fluidCS.SetFloat(_shaderProperties.restDensityConstId, restDensity);
-            fluidCS.SetFloat(_shaderProperties.viscosityConstId, viscosity);
-            fluidCS.SetFloat(_shaderProperties.timestepConstId, timestep);
+            fluidCS.SetInt(_shaderProps.particleCountConstId, _particleCountInt);
+            fluidCS.SetFloat(_shaderProps.smoothlenConstId, smoothlen);
+            fluidCS.SetFloat(_shaderProps.densityKernelCoefConstId, _densityCoef);
+            fluidCS.SetFloat(_shaderProps.pressureKernelCoefConstId, _pressureGradCoef);
+            fluidCS.SetFloat(_shaderProps.viscosityKernelCoefConstId, _viscosityLapCoef);
+            fluidCS.SetFloat(_shaderProps.pressureStiffnessConstId, pressureStiffness);
+            fluidCS.SetFloat(_shaderProps.restDensityConstId, restDensity);
+            fluidCS.SetFloat(_shaderProps.viscosityConstId, viscosity);
+            fluidCS.SetFloat(_shaderProps.timestepConstId, timestep);
 
-            fluidCS.SetFloats(_shaderProperties.gravityConstId, gravity.x, gravity.y);
-            fluidCS.SetFloats(_shaderProperties.rangeConstId, range.x, range.y);
-            fluidCS.SetFloat(_shaderProperties.wallStiffnessConstId, wallStiffness);
+            fluidCS.SetFloats(_shaderProps.gravityConstId, gravity.x, gravity.y);
+            fluidCS.SetFloats(_shaderProps.rangeConstId, range.x, range.y);
+            fluidCS.SetFloat(_shaderProps.wallStiffnessConstId, wallStiffness);
 
             Vector2 mousePosition = Vector2.zero;
             if (Camera.current)
@@ -231,16 +170,9 @@ namespace Seiro.GPUSandbox.SPH
                 screenMousePosition.z = -Camera.current.transform.position.z;
                 mousePosition = Camera.current.ScreenToWorldPoint(screenMousePosition);
             }
-            fluidCS.SetBool(_shaderProperties.mouseDownConstId, Input.GetMouseButton(0));
-            fluidCS.SetFloats(_shaderProperties.mousePositionConstId, mousePosition.x, mousePosition.y);
-            fluidCS.SetFloat(_shaderProperties.mouseRadiusConstId, mouseRadius);
-        }
-
-        private void SwapBuffer(ref ComputeBuffer ping, ref ComputeBuffer pong)
-        {
-            ComputeBuffer temp = ping;
-            ping = pong;
-            pong = temp;
+            fluidCS.SetBool(_shaderProps.mouseDownConstId, Input.GetMouseButton(0));
+            fluidCS.SetFloats(_shaderProps.mousePositionConstId, mousePosition.x, mousePosition.y);
+            fluidCS.SetFloat(_shaderProps.mouseRadiusConstId, mouseRadius);
         }
 
         private void Simulate()
@@ -253,30 +185,28 @@ namespace Seiro.GPUSandbox.SPH
             int threadGroupSize = _particleCountInt / SPH.Constants.SIMULATION_BLOCK_SIZE;
 
             // 密度の計算
-            fluidCS.SetBuffer(_shaderProperties.densityKernelId, _shaderProperties.particlesBufferReadId, _particlesBufferRead);
-            fluidCS.SetBuffer(_shaderProperties.densityKernelId, _shaderProperties.particlesBufferWriteId, _particlesBufferWrite);
-            fluidCS.Dispatch(_shaderProperties.densityKernelId, threadGroupSize, 1, 1);
-            SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+            fluidCS.SetBuffer(_shaderProps.densityKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+            fluidCS.SetBuffer(_shaderProps.densityKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+            fluidCS.Dispatch(_shaderProps.densityKernelId, threadGroupSize, 1, 1);
+            SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
 
             // 圧力の計算
-            fluidCS.SetBuffer(_shaderProperties.pressureKernelId, _shaderProperties.particlesBufferReadId, _particlesBufferRead);
-            fluidCS.SetBuffer(_shaderProperties.pressureKernelId, _shaderProperties.particlesBufferWriteId, _particlesBufferWrite);
-            fluidCS.Dispatch(_shaderProperties.pressureKernelId, threadGroupSize, 1, 1);
-            SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+            fluidCS.SetBuffer(_shaderProps.pressureKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+            fluidCS.SetBuffer(_shaderProps.pressureKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+            fluidCS.Dispatch(_shaderProps.pressureKernelId, threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
 
             // 計算しておいた密度、圧力をもとに圧力項と拡散粘性項を計算する。
-            fluidCS.SetBuffer(_shaderProperties.forceKernelId, _shaderProperties.particlesBufferReadId, _particlesBufferRead);
-            fluidCS.SetBuffer(_shaderProperties.forceKernelId, _shaderProperties.particlesBufferWriteId, _particlesBufferWrite);
-            fluidCS.Dispatch(_shaderProperties.forceKernelId, threadGroupSize, 1, 1);
-            SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+            fluidCS.SetBuffer(_shaderProps.forceKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+            fluidCS.SetBuffer(_shaderProps.forceKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+            fluidCS.Dispatch(_shaderProps.forceKernelId, threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
 
             // 計算しておいた力をもとに、漸進オイラー法によりパーティクルの座標を更新する
-            fluidCS.SetBuffer(_shaderProperties.integrateKernelId, _shaderProperties.particlesBufferReadId, _particlesBufferRead);
-            fluidCS.SetBuffer(_shaderProperties.integrateKernelId, _shaderProperties.particlesBufferWriteId, _particlesBufferWrite);
-            fluidCS.Dispatch(_shaderProperties.integrateKernelId, threadGroupSize, 1, 1);
-
-            // 計算用バッファの切替
-            SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+            fluidCS.SetBuffer(_shaderProps.integrateKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+            fluidCS.SetBuffer(_shaderProps.integrateKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+            fluidCS.Dispatch(_shaderProps.integrateKernelId, threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
         }
 
 		private void RenderParticles()
@@ -288,6 +218,7 @@ namespace Seiro.GPUSandbox.SPH
 
 			instancingMat.SetPass(0);
 			instancingMat.SetBuffer("buf", _particlesBufferRead);
+			instancingMat.SetFloat("_Smoothlen", smoothlen * particleScale);
 			Graphics.DrawMeshInstancedIndirect(instancingMesh, 0, instancingMat, new Bounds(range * 0.5f, range), _instancingArgsBuffer);
 		}
     }

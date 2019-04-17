@@ -6,30 +6,194 @@
 #pragma kernel ForceCS
 #pragma kernel IntegrateCS
 
+#include "./../../Common/Particles.cginc"
 #include "./../Common/SPH.cginc"
+#include "./../../GPUNeighborSearch/Common/NeighborSearch2D.cginc"
 
 cbuffer cb : register(b0)
 {
-	float _Timestep;
-	uint _ParticleCount;
-	float _Smoothlen;
-	float _DensityKernelCoef;
-	float _PressureKernelCoef;
-	float _ViscosityKernelCoef;
-	float _PressureStiffness;
-	float _RestDensity;
-	float _Viscosity;
+	float _Timestep;				// 時間刻み幅
+	uint _ParticleCount;			// パーティクル数
+	float _Smoothlen;				// パーティクルの平滑化距離
 
-	float2 _Gravity;
-	float2 _Range;
-	float _WallStiffness;
+	float _DensityKernelCoef;		// 密度カーネル関数の係数
+	float _PressureKernelCoef;		// 圧力カーネル関数の係数
+	float _ViscosityKernelCoef;		// 粘性カーネル関数の係数
 
-	bool _MouseDown;
-	float2 _MousePosition;
-	float _MouseRadius;
+	float _PressureStiffness;		// 圧力定数
+	float _RestDensity;				// 安定密度(対象流体の密度
+
+	float _Viscosity;				// 動粘性係数
+
+	float2 _Gravity;				// 重力加速度
+	float2 _Range;					// シミュレーション範囲
+	float _WallStiffness;			// 壁の反発力
+
+	bool _MouseDown;				// マウス押下判定
+	float2 _MousePosition;			// マウス位置
+	float _MouseRadius;				// マウス半径
+
+	int2 _GridDim;
+	float _GridCellSize;
 }
 
-StructuredBuffer<Particle2D> _ParticlesBufferRead;
-RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
+StructuredBuffer<SPH_Particle2D> _ParticlesBufferRead;
+RWStructuredBuffer<SPH_Particle2D> _ParticlesBufferWrite;
 
 StructuredBuffer<uint2> _IndicesBufferRead;
+
+inline float CalcDensity(float sq_r)
+{
+	const float sq_h = _Smoothlen * _Smoothlen;
+	const float d = sq_h - sq_r;
+	return _DensityKernelCoef * d * d * d;
+}
+
+inline float CalcPressure(float density)
+{ 
+	return _PressureStiffness * max(pow(density / _RestDensity, 7) - 1, 0);
+}
+
+inline float2 CalcGradPressure(float r, float2 diff, float p_press, float q_press, float q_dens)
+{
+	const float h = _Smoothlen;
+	float avg_press = (p_press + q_press) * 0.5f;
+	float coef = _PressureKernelCoef * avg_press / q_dens * (h - r) * (h - r) / r;
+	return coef * diff;
+ }
+
+inline float2 CalcLapViscosity(float r, float2 p_vel, float2 q_vel, float q_dens)
+{
+	const float h = _Smoothlen;
+	float2 diff_vel = q_vel - p_vel;
+	float coef = _ViscosityKernelCoef / q_dens * (h - r);
+	return coef * diff_vel;
+}
+
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
+void DensityCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
+	float2 p_pos = p.position;
+
+	float sq_h = _Smoothlen * _Smoothlen;
+	float density = 0;
+
+	int2 pGrid = int2(CalcGridAddress(p.position, _GridCellSize, _GridDim));
+	int2 minGrid = int2(max(pGrid.x - 1, 0), max(pGrid.y - 1, 0));
+	int2 maxGrid = int2(min(pGrid.x + 1, _GridDim.x - 1), min(pGrid.y + 1, _GridDim.y - 1));
+
+	for (int y = minGrid.y; y <= maxGrid.y; ++y)
+	{
+		for (int x = minGrid.x; x <= maxGrid.x; ++x)
+		{
+			uint gridId = _GridDim.x * y + x;
+			uint2 iteRange = _IndicesBufferRead[gridId];
+			for (uint i = iteRange.x; i < iteRange.y; ++i)
+			{
+				if(i == pid) continue;
+
+				SPH_Particle2D q = _ParticlesBufferRead[i];
+				float2 diff = p_pos - q.position;
+				float sq_r = dot(diff, diff);
+				if (sq_r < sq_h)
+				{
+					density += CalcDensity(sq_r);
+				}
+			}
+		}
+	}
+	p.density = density;
+	_ParticlesBufferWrite[pid] = p;
+}
+
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
+void PressureCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
+	p.pressure = CalcPressure(p.density);
+	_ParticlesBufferWrite[pid] = p;
+}
+
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
+void ForceCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
+	float2 p_pos = p.position;
+
+	float sq_h = _Smoothlen * _Smoothlen;
+	float2 press = float2(0, 0);
+	float2 visco = float2(0, 0);
+
+	int2 pGrid = int2(CalcGridAddress(p.position, _GridCellSize, _GridDim));
+	int2 minGrid = int2(max(pGrid.x - 1, 0), max(pGrid.y - 1, 0));
+	int2 maxGrid = int2(min(pGrid.x + 1, _GridDim.x - 1), min(pGrid.y + 1, _GridDim.y - 1));
+
+	for (int y = minGrid.y; y <= maxGrid.y; ++y)
+	{
+		for (int x = minGrid.x; x <= maxGrid.x; ++x)
+		{
+			uint gridId = _GridDim.x * y + x;
+			uint2 iteRange = _IndicesBufferRead[gridId];
+			for (uint i = iteRange.x; i < iteRange.y; ++i)
+			{
+				if (i == pid) continue;
+
+				SPH_Particle2D q = _ParticlesBufferRead[i];
+				float2 diff = p_pos - q.position;
+				float sq_r = dot(diff, diff);
+				if (sq_r < sq_h)
+				{
+					float r = sqrt(sq_r);
+					press += CalcGradPressure(r, diff, p.pressure, q.pressure, q.density);
+					visco += CalcLapViscosity(r, p.velocity, q.velocity, q.density);
+				}
+			}
+		}
+	}
+
+	float2 force = -press + _Viscosity * visco;
+	p.acceleration = force / p.density;
+	_ParticlesBufferWrite[pid] = p;
+}
+
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
+void IntegrateCS(uint3 dtid : SV_DispatchThreadID)
+{
+	uint pid = dtid.x;
+
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
+	float2 position = p.position;
+	float2 velocity = p.velocity;
+	float2 acceleration = p.acceleration;
+
+	// マウスインタラクション
+	if (_MouseDown && distance(position, _MousePosition) < _MouseRadius)
+	{
+		float2 dir = position - _MousePosition;
+		float pushBack = _MouseRadius - length(dir);
+		acceleration += 100.0f * pushBack * normalize(dir);
+	}
+
+	// 壁境界
+	acceleration += min(position.x, 0) * -_WallStiffness * float2(1, 0);
+	acceleration += min(position.y, 0) * -_WallStiffness * float2(0, 1);
+	acceleration += max(position.x - _Range.x, 0) * _WallStiffness * float2(-1, 0);
+	acceleration += max(position.y - _Range.y, 0) * _WallStiffness * float2(0, -1);
+
+	// 外力項
+	acceleration += _Gravity;
+
+	// 漸進オイラー法による粒子座標の更新
+	velocity += _Timestep * acceleration;
+	position += _Timestep * velocity;
+
+	p.acceleration = acceleration;
+	p.velocity = velocity;
+	p.position = position;
+
+	_ParticlesBufferWrite[pid] = p;
+}

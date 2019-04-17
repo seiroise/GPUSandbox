@@ -1,5 +1,6 @@
 ﻿#pragma kernel UpdateParticleColorCS
 
+#include "./../../Common/Particles.cginc"
 #include "./../Common/NeighborSearch2D.cginc"
 
 // パーティクル関連のバッファ
@@ -17,12 +18,12 @@ cbuffer cb : register(b0)
 };
 
 // 自分の周囲のパーティクルの量に応じて色を変化させる。
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(NS_SIMULATION_BLOCK_SIZE, 1, 1)]
 void UpdateParticleColorCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint id = dtid.x;
 	Particle2D p = _ParticlesBufferRead[id];
-	int2 pGrid = (int2)(p.position / _GridCellSize);
+	int2 pGrid = int2(CalcGridAddress(p.position, _GridCellSize, _GridDim));
 
 	// 自分の周囲にあるパーティクルの数に応じて色を変える
 	int2 minGrid = int2(max(pGrid.x - 1, 0), max(pGrid.y - 1, 0));

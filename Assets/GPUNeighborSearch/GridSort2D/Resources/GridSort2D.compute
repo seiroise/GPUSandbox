@@ -1,15 +1,20 @@
-﻿#pragma kernel BuildGridParticlesCS
-#pragma kernel ClearGridIndicesCS
-#pragma kernel BuildGridIndicesCS
-#pragma kernel RearrangeParticlesCS
-#pragma kernel CopyBuffer
+﻿#pragma kernel BuildGridParticlesCS GRIDSORT_PARTICLE_2D
+#pragma kernel BuildGridParticlesCS GRIDSORT_SPH_PARTICLE_2D
+#pragma kernel ClearGridIndicesCS GRIDSORT_PARTICLE_2D
+#pragma kernel ClearGridIndicesCS GRIDSORT_SPH_PARTICLE_2D
+#pragma kernel BuildGridIndicesCS GRIDSORT_PARTICLE_2D
+#pragma kernel BuildGridIndicesCS GRIDSORT_SPH_PARTICLE_2D
+#pragma kernel RearrangeParticlesCS GRIDSORT_PARTICLE_2D
+#pragma kernel RearrangeParticlesCS GRIDSORT_SPH_PARTICLE_2D
+#pragma kernel CopyBuffer GRIDSORT_PARTICLE_2D
+#pragma kernel CopyBuffer GRIDSORT_SPH_PARTICLE_2D
 
+#include "./../../../Common/Particles.cginc"
+
+// 対象となるパーティクルを格納するためのバッファ種類に応じていくつか必要になる。
+// なので切り替えたい場合はdefineを使用すること
+#include "./../../../Common/ParticlesBuffer.cginc"
 #include "./../../Common/NeighborSearch2D.cginc"
-// #include "Assets/GPUNeighborSearch/Common/NeighborSearch2D.cginc"
-
-// 対象となるパーティクルを格納するためのバッファ
-StructuredBuffer<Particle2D> _ParticlesBufferRead;
-RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
 
 // パーティクルと対応するグリッドハッシュのペアを格納するためのバッファ
 StructuredBuffer<uint2> _GridParticlePairBufferRead;
@@ -25,13 +30,6 @@ cbuffer cb : register(b0)
 	float _GridCellSize;
 	uint2 _GridDim;
 };
-
-// 座標に対応するグリッド番号を計算する。
-// 小数点以下については、そのグリッド内の正規化された位置。(今回は使わないけど。
-float2 CalcGridAddress(float2 pos)
-{
-	return pos / _GridCellSize;
-}
 
 // 座標に対応するグリッドハッシュ(本当にそう呼ぶかは不明...)
 uint GridHash(uint2 pos)
@@ -58,20 +56,20 @@ uint GetGridValue(uint2 pair)
 // パーティクルごとに座標によるグリッドハッシュと、番号のペアを作成し、そのバッファを作成する。
 // _ParticleBufferRead				: パーティクルの座標から所属グリッドの計算
 // _GridParticlePairBufferWrite		: 所属グリッドのグリッドハッシュとパーティクル番号についての情報を格納する
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(NS_SIMULATION_BLOCK_SIZE, 1, 1)]
 void BuildGridParticlesCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
 	if(pid > (uint)(_ParticleCount - 1)) return;
 
 	float2 pos = _ParticlesBufferRead[pid].position;
-	float2 grid = CalcGridAddress(pos);
+	float2 grid = CalcGridAddress(pos, _GridCellSize, _GridDim);
 	_GridParticlePairBufferWrite[pid] = MakeKeyValuePair((uint2)grid, pid);
 }
 
 // グリッドごとのパーティクルの開始番号と終了番号を設定するためのバッファの初期化
 // _GridIndicesBufferWrite	: グリッド内のパーティクルの開始番号と終了番号のセットするための初期化
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(NS_SIMULATION_BLOCK_SIZE, 1, 1)]
 void ClearGridIndicesCS(uint3 dtid : SV_DispatchThreadID)
 {
 	_GridIndicesBufferWrite[dtid.x] = uint2(0, 0);
@@ -81,7 +79,7 @@ void ClearGridIndicesCS(uint3 dtid : SV_DispatchThreadID)
 // グリッドごとにパーティクルの開始番号と終了番号を設定する。
 // _GridParticlePairBufferRead 	: ソート済みのグリッド番号とパーティクル番号のペアのバッファ
 // _GridIndicesBufferWrite		: グリッドごとに開始番号と終了番号を書き込むためのバッファ
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(NS_SIMULATION_BLOCK_SIZE, 1, 1)]
 void BuildGridIndicesCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
@@ -104,7 +102,7 @@ void BuildGridIndicesCS(uint3 dtid : SV_DispatchThreadID)
 // _GridParticlePairBufferRead	: グリッド番号によってソート済みのパーティクル番号
 // _ParticlesBufferRead			: パーティクルを表すデータのバッファ(読み込み
 // _ParticlesBufferWrite		: パーティクルを表すデータのバッファ(書き込み
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(NS_SIMULATION_BLOCK_SIZE, 1, 1)]
 void RearrangeParticlesCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint id = dtid.x;
@@ -115,7 +113,7 @@ void RearrangeParticlesCS(uint3 dtid : SV_DispatchThreadID)
 // バッファのコピー
 // _ParticlesBufferRead		: 読み込みバッファ
 // _ParticlesBufferWrite	: 書き込みバッファ
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(NS_SIMULATION_BLOCK_SIZE, 1, 1)]
 void CopyBuffer(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;

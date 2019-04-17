@@ -7,6 +7,7 @@
 #pragma kernel ForceCS
 #pragma kernel IntegrateCS
 
+#include "./../../Common/Particles.cginc"
 #include "./../Common/SPH.cginc"
 
 cbuffer cb : register(b0)
@@ -33,14 +34,14 @@ cbuffer cb : register(b0)
 	float _MouseRadius;				// マウス半径
 };
 
-StructuredBuffer<Particle2D> _ParticlesBufferRead;
-RWStructuredBuffer<Particle2D> _ParticlesBufferWrite;
+StructuredBuffer<SPH_Particle2D> _ParticlesBufferRead;
+RWStructuredBuffer<SPH_Particle2D> _ParticlesBufferWrite;
 
 // 密度計算のカーネル関数(poly6 kernel)
 inline float CalcDensity(float sq_r)
 {
 	const float sq_h = _Smoothlen * _Smoothlen;
-	const float d = max(sq_h - sq_r, 0.001f);
+	const float d = sq_h - sq_r;
 	return _DensityKernelCoef * d * d * d;
 }
 
@@ -70,11 +71,11 @@ inline float2 CalcLapViscosity(float r, float2 p_vel, float2 q_vel, float q_dens
 }
 
 // それぞれのパーティクル(離散化観測点)の密度を計算
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
 void DensityCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
-	Particle2D p = _ParticlesBufferRead[pid];
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
 	float2 p_pos = p.position;
 
 	float sq_h = _Smoothlen * _Smoothlen;
@@ -83,11 +84,11 @@ void DensityCS(uint3 dtid : SV_DispatchThreadID)
 	{
 		if(i == pid) continue;
 
-		Particle2D q = _ParticlesBufferRead[i];
+		SPH_Particle2D q = _ParticlesBufferRead[i];
 		float2 diff = p_pos - q.position;
 		float sq_r = dot(diff, diff);
 
-		if(sq_r < sq_h)
+		if(sq_r <= sq_h)
 		{
 			// massはdensity kernel coefに含めている想定
 			density += CalcDensity(sq_r);
@@ -98,21 +99,21 @@ void DensityCS(uint3 dtid : SV_DispatchThreadID)
 }
 
 // 圧力項の計算のために事前に密度から圧力を計算しておく
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
 void PressureCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
-	Particle2D p = _ParticlesBufferRead[pid];
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
 	p.pressure = CalcPressure(p.density);
 	_ParticlesBufferWrite[pid] = p;
 }
 
 // 圧力項、粘性項、外力項の計算
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
 void ForceCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
-	Particle2D p = _ParticlesBufferRead[pid];
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
 
 	float sq_h = _Smoothlen * _Smoothlen;
 
@@ -123,15 +124,14 @@ void ForceCS(uint3 dtid : SV_DispatchThreadID)
 	{
 		if(pid == i) continue;
 
-		Particle2D q = _ParticlesBufferRead[i];
+		SPH_Particle2D q = _ParticlesBufferRead[i];
 
 		float2 diff = p.position - q.position;
 		float sq_r = dot(diff, diff);
 
 		if(sq_r < sq_h)
 		{
-			float r = max(sqrt(sq_r), 0.01f);
-
+			float r = sqrt(sq_r);
 			// 基本的にmassや係数の正負は定数係数として処理する
 			press += CalcGradPressure(r, diff, p.pressure, q.pressure, q.density);
 			visco += CalcLapViscosity(r, p.velocity, q.velocity, q.density);
@@ -148,12 +148,12 @@ void ForceCS(uint3 dtid : SV_DispatchThreadID)
 	_ParticlesBufferWrite[pid] = p;
 }
 
-[numthreads(SIMULATION_BLOCK_SIZE, 1, 1)]
+[numthreads(SPH_SIMULATION_BLOCK_SIZE, 1, 1)]
 void IntegrateCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
 
-	Particle2D p = _ParticlesBufferRead[pid];
+	SPH_Particle2D p = _ParticlesBufferRead[pid];
 	float2 position = p.position;
 	float2 velocity = p.velocity;
 	float2 acceleration = p.acceleration;

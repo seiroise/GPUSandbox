@@ -11,7 +11,7 @@ namespace Seiro.GPUSandbox.NS
 	// うーんなんというか、ぱっと見で、このクラスはどのプロパティを設定する必要があるのかがわからない...
     public abstract class GridSorterBase
     {
-		public class ShaderParameters
+		public class ShaderProps
 		{
 			// kernel
 			public readonly int buildGridParticlesKernelId;
@@ -33,13 +33,17 @@ namespace Seiro.GPUSandbox.NS
 			public readonly int gridDimConstId;
 			public readonly int gridCellSizeConstId;
 
-			public ShaderParameters(ref ComputeShader cs)
+			public ShaderProps(ref ComputeShader cs, ParticleKind particleKind)
 			{
-				buildGridParticlesKernelId = cs.FindKernel("BuildGridParticlesCS");
-				clearGridIndicesKernelId = cs.FindKernel("ClearGridIndicesCS");
-				buildGridIndicesKernelId = cs.FindKernel("BuildGridIndicesCS");
-				rearrangeParticlesKernelId = cs.FindKernel("RearrangeParticlesCS");
-				copyBufferKernelId = cs.FindKernel("CopyBuffer");
+				// カーネルの使用しているバッファの型が異なるが、
+				// それぞれ対応するインデックス分ずれて宣言されているのでparticleKindだけずらす。
+				int offset = (int)particleKind;
+
+				buildGridParticlesKernelId = cs.FindKernel("BuildGridParticlesCS") + offset;
+				clearGridIndicesKernelId = cs.FindKernel("ClearGridIndicesCS") + offset;
+				buildGridIndicesKernelId = cs.FindKernel("BuildGridIndicesCS") + offset;
+				rearrangeParticlesKernelId = cs.FindKernel("RearrangeParticlesCS") + offset;
+				copyBufferKernelId = cs.FindKernel("CopyBuffer") + offset;
 
 				particlesBufReadId = Shader.PropertyToID("_ParticlesBufferRead");
 				particlesBufWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
@@ -61,33 +65,29 @@ namespace Seiro.GPUSandbox.NS
         protected float _gridCellSize;
 
         protected ComputeShader _gridSortCS;
-		protected ShaderParameters _shaderParams;
+		protected ShaderProps _shaderProps;
 
-		private ComputeBuffer _targetObjectsBuffer;
+		private ComputeBuffer _gridParticlesBuffer;					// size : uint2 * objectCount
+        private ComputeBuffer _gridParticlesPingPongBuffer;			// size : uint2 * objectCount
 
-		private ComputeBuffer _gridParticlesBuffer;				// uint2 * objectCount
-        private ComputeBuffer _gridParticlesPingPongBuffer;		// uint2 * objectCount
-
-        protected ComputeBuffer _gridIndicesBuffer;				// uint2 * gridCellCount;
-        protected ComputeBuffer _sortedObjectsTemporaryBuffer;		// T * objectCount
+        protected ComputeBuffer _gridIndicesBuffer;					// size : uint2 * gridCellCount;
+        protected ComputeBuffer _sortedObjectsTemporaryBuffer;		// size : T * objectCount
 
         private int _threadGroupCount;
         private BitonicSort _bitonicSort;
 
 		public ComputeBuffer gridIndicesBuffer { get { return _gridIndicesBuffer; } }
 
-        public GridSorterBase(ComputeBuffer targetObjectsBuffer, int gridCellCount, float gridCellSize, ComputeShader gridSortCS, ComputeShader bitonicSortCS)
+        public GridSorterBase(int objectCount, int objectStride, int gridCellCount, float gridCellSize, ComputeShader gridSortCS, ComputeShader bitonicSortCS, ParticleKind particleKind)
         {
-			_targetObjectsBuffer = targetObjectsBuffer;
-
-            _objectCount = targetObjectsBuffer.count;
-			_objectStride = targetObjectsBuffer.stride;
+            _objectCount = objectCount;
+			_objectStride = objectStride;
 
 			_gridCellCount = gridCellCount;
 			_gridCellSize = gridCellSize;
 
             _gridSortCS = gridSortCS;
-            _shaderParams = new ShaderParameters(ref _gridSortCS);
+            _shaderProps = new ShaderProps(ref _gridSortCS, particleKind);
 
             InitializeBuffer();
 
@@ -103,34 +103,55 @@ namespace Seiro.GPUSandbox.NS
 			Functions.DestroyBuffer(ref _sortedObjectsTemporaryBuffer);
         }
 
-        public void GridSort()
+        public void GridSort(ref ComputeBuffer objectBuffer)
         {
             SetShaderParams();
 
             // build grid particle
-            _gridSortCS.SetBuffer(_shaderParams.buildGridParticlesKernelId, _shaderParams.particlesBufReadId, _targetObjectsBuffer);
-            _gridSortCS.SetBuffer(_shaderParams.buildGridParticlesKernelId, _shaderParams.gridParticlePairBufWriteId, _gridParticlesBuffer);
-            _gridSortCS.Dispatch(_shaderParams.buildGridParticlesKernelId, _threadGroupCount, 1, 1);
+            _gridSortCS.SetBuffer(_shaderProps.buildGridParticlesKernelId, _shaderProps.particlesBufReadId, objectBuffer);
+            _gridSortCS.SetBuffer(_shaderProps.buildGridParticlesKernelId, _shaderProps.gridParticlePairBufWriteId, _gridParticlesBuffer);
+            _gridSortCS.Dispatch(_shaderProps.buildGridParticlesKernelId, _threadGroupCount, 1, 1);
 
             // sort particles with grid hash by bitonic sort
             _bitonicSort.Sort(ref _gridParticlesBuffer, ref _gridParticlesPingPongBuffer);
 
 			// constract grid indices
-			_gridSortCS.SetBuffer(_shaderParams.buildGridIndicesKernelId, _shaderParams.gridParticlePairBufReadId, _gridParticlesBuffer);
-			_gridSortCS.SetBuffer(_shaderParams.buildGridIndicesKernelId, _shaderParams.gridIndicesBufWriteId, _gridIndicesBuffer);
-			_gridSortCS.Dispatch(_shaderParams.buildGridIndicesKernelId, _threadGroupCount, 1, 1);
+			_gridSortCS.SetBuffer(_shaderProps.buildGridIndicesKernelId, _shaderProps.gridParticlePairBufReadId, _gridParticlesBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.buildGridIndicesKernelId, _shaderProps.gridIndicesBufWriteId, _gridIndicesBuffer);
+			_gridSortCS.Dispatch(_shaderProps.buildGridIndicesKernelId, _threadGroupCount, 1, 1);
 
 			// rearrange particles
-			_gridSortCS.SetBuffer(_shaderParams.rearrangeParticlesKernelId, _shaderParams.gridParticlePairBufReadId, _gridParticlesBuffer);
-			_gridSortCS.SetBuffer(_shaderParams.rearrangeParticlesKernelId, _shaderParams.particlesBufReadId, _targetObjectsBuffer);
-			_gridSortCS.SetBuffer(_shaderParams.rearrangeParticlesKernelId, _shaderParams.particlesBufWriteId, _sortedObjectsTemporaryBuffer);
-			_gridSortCS.Dispatch(_shaderParams.rearrangeParticlesKernelId, _threadGroupCount, 1, 1);
+			_gridSortCS.SetBuffer(_shaderProps.rearrangeParticlesKernelId, _shaderProps.gridParticlePairBufReadId, _gridParticlesBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.rearrangeParticlesKernelId, _shaderProps.particlesBufReadId, objectBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.rearrangeParticlesKernelId, _shaderProps.particlesBufWriteId, _sortedObjectsTemporaryBuffer);
+			_gridSortCS.Dispatch(_shaderProps.rearrangeParticlesKernelId, _threadGroupCount, 1, 1);
 
 			// copy buffer
-			_gridSortCS.SetBuffer(_shaderParams.copyBufferKernelId, _shaderParams.particlesBufReadId, _sortedObjectsTemporaryBuffer);
-			_gridSortCS.SetBuffer(_shaderParams.copyBufferKernelId, _shaderParams.particlesBufWriteId, _targetObjectsBuffer);
-			_gridSortCS.Dispatch(_shaderParams.copyBufferKernelId, _threadGroupCount, 1, 1);
+			_gridSortCS.SetBuffer(_shaderProps.copyBufferKernelId, _shaderProps.particlesBufReadId, _sortedObjectsTemporaryBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.copyBufferKernelId, _shaderProps.particlesBufWriteId, objectBuffer);
+			_gridSortCS.Dispatch(_shaderProps.copyBufferKernelId, _threadGroupCount, 1, 1);
         }
+
+		// 前回のソート結果を使用してソートを行う。
+		// オブジェクトの数が同一のバッファの場合に適応可能。
+		public void RearrangeWithIndices(ref ComputeBuffer objectBuffer)
+		{
+			if (objectBuffer.count != _objectCount)
+			{
+				return;
+			}
+
+			// rearrange
+			_gridSortCS.SetBuffer(_shaderProps.rearrangeParticlesKernelId, _shaderProps.gridParticlePairBufReadId, _gridParticlesBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.rearrangeParticlesKernelId, _shaderProps.particlesBufReadId, objectBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.rearrangeParticlesKernelId, _shaderProps.particlesBufWriteId, _sortedObjectsTemporaryBuffer);
+			_gridSortCS.Dispatch(_shaderProps.rearrangeParticlesKernelId, _threadGroupCount, 1, 1);
+
+			// copy buffer
+			_gridSortCS.SetBuffer(_shaderProps.copyBufferKernelId, _shaderProps.particlesBufReadId, _sortedObjectsTemporaryBuffer);
+			_gridSortCS.SetBuffer(_shaderProps.copyBufferKernelId, _shaderProps.particlesBufWriteId, objectBuffer);
+			_gridSortCS.Dispatch(_shaderProps.copyBufferKernelId, _threadGroupCount, 1, 1);
+		}
 
 		public void LogGridIndicesForDebug()
 		{
@@ -159,10 +180,10 @@ namespace Seiro.GPUSandbox.NS
 
         private void SetShaderParams()
         {
-            _gridSortCS.SetInt(_shaderParams.particleCountConstId, _objectCount);
-			_gridSortCS.SetFloat(_shaderParams.gridCellSizeConstId, _gridCellSize);
+            _gridSortCS.SetInt(_shaderProps.particleCountConstId, _objectCount);
+			_gridSortCS.SetFloat(_shaderProps.gridCellSizeConstId, _gridCellSize);
 
-			SetGridDim(_shaderParams.gridDimConstId, _gridSortCS);
+			SetGridDim(_shaderProps.gridDimConstId, _gridSortCS);
         }
 
 		// 派生クラスでは必ずこの値を設定する必要がある、逆に言うとこれ以外は設定しなくてもいい。

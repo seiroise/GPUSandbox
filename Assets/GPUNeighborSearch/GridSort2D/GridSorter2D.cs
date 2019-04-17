@@ -6,8 +6,8 @@ namespace Seiro.GPUSandbox.NS
 	{
 		private Vector2Int _gridDim;
 
-		public GridSorter2D(ComputeBuffer objectBuffer, Vector2Int gridDim, float gridCellSize)
-			: base(objectBuffer, gridDim.x * gridDim.y, gridCellSize, Resources.Load<ComputeShader>("GridSort2D"), Resources.Load<ComputeShader>("BitonicSort"))
+		public GridSorter2D(int objectCount, int objectStride, Vector2Int gridDim, float gridCellSize, ParticleKind particleKind)
+			: base(objectCount, objectStride, gridDim.x * gridDim.y, gridCellSize, Resources.Load<ComputeShader>("GridSort2D"), Resources.Load<ComputeShader>("BitonicSort"), particleKind)
 		{
 			_gridDim = gridDim;
 		}

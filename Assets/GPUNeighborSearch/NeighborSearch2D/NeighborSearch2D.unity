@@ -218,7 +218,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa468405bb869284f932fa29b39e5f3e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  particleCount: 16384
+  particleCount: 8192
   gridCellSize: 1
   gridDim: {x: 32, y: 32}
   particleCS: {fileID: 7200000, guid: 53a5e455c36e9e84c821241baf1aaee6, type: 3}

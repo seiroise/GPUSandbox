@@ -31,21 +31,6 @@ namespace Seiro.GPUSandbox.NS
             }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        public struct Particle2D
-        {
-            Vector2 position;
-			Vector2 velocity;
-            Vector3 color;
-
-            public Particle2D(Vector2 position, Vector2 velocity, Vector3 color)
-            {
-                this.position = position;
-				this.velocity = velocity;
-                this.color = color;
-            }
-        }
-
         public ParticleCount particleCount = ParticleCount.N_8K;
         public float gridCellSize = 1;
         public Vector2Int gridDim = new Vector2Int(16, 16);
@@ -80,7 +65,7 @@ namespace Seiro.GPUSandbox.NS
             _particlesBufferWrite = new ComputeBuffer(_particleCountInt, structSize);
             InitializeParticlesBuffer();
 
-            _gridSorter = new GridSorter2D(_particlesBufferRead, gridDim, gridCellSize);
+            _gridSorter = new GridSorter2D(_particleCountInt, structSize, gridDim, gridCellSize, ParticleKind.NS);
             _shaderProps = new ShaderProperties(ref particleCS);
 
             _instancingArgsBuffer = new ComputeBuffer(1, sizeof(uint) * _instancingArgs.Length, ComputeBufferType.IndirectArguments);
@@ -95,8 +80,9 @@ namespace Seiro.GPUSandbox.NS
             if (particleCS == null) return;
 
             Vector2Int displayGrid = new Vector2Int(displayGridIndex % gridDim.x, displayGridIndex / gridDim.x);
+			
 			// grid sort
-            _gridSorter.GridSort();
+            _gridSorter.GridSort(ref _particlesBufferRead);
 
 			if (Input.GetKeyDown(KeyCode.Space))
 			{
@@ -132,10 +118,12 @@ namespace Seiro.GPUSandbox.NS
         {
             Particle2D[] particles = new Particle2D[_particleCountInt];
             Vector2 gridRange = gridCellSize * (Vector2)gridDim;
-            for (int i = 0, n = _particleCountInt; i < n; ++i)
+			Vector2 center = gridRange * 0.5f;
+			for (int i = 0, n = _particleCountInt; i < n; ++i)
             {
-                particles[i] = new Particle2D(
-					new Vector2(Random.Range(0f, gridRange.x), Random.Range(0f, gridRange.y)),
+				particles[i] = new Particle2D(
+					Random.insideUnitCircle * gridRange * 0.5f + center,
+					// new Vector2(Random.Range(0f, gridRange.x), Random.Range(0f, gridRange.y)),
 					new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)),
 					Vector3.one);
             }

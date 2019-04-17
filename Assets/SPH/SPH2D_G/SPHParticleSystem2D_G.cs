@@ -1,29 +1,45 @@
-﻿using UnityEngine;
+﻿using System.Runtime.InteropServices;
+using Seiro.GPUSandbox.NS;
+using UnityEngine;
 
 namespace Seiro.GPUSandbox.SPH
 {
 	public class SPHParticleSystem2D_G : MonoBehaviour
 	{
 
-		public class ShaderProperties
+		public class SPH_GShaderProps : SPHShaderProps
 		{
-			
+			public readonly int indicesBufferReadId;
+
+			public readonly int gridDimConstId;
+			public readonly int gridCellSizeConstId;
+
+			public SPH_GShaderProps(ref ComputeShader cs) : base(ref cs)
+			{
+				indicesBufferReadId = Shader.PropertyToID("_IndicesBufferRead");
+
+				gridDimConstId = Shader.PropertyToID("_GridDim");
+				gridCellSizeConstId = Shader.PropertyToID("_GridCellSize");
+			}
 		}
 
-		public ComputeShader fluidCS;
+		public ComputeShader fluidCS = null;
 
 		[Space]
 
 		public bool simulate = true;		// シミュレーションの有効/無効
 		[Range(1, 32)]
 		public int maxIterations = 8;		// 1フレーム内のシミュレーション反復回数
-		[Range(0.0001f, 0.005f)]
-		public float timestep = 0.001f;		// シミュレーションの時間刻み幅
+		[Range(0.0001f, 0.02f)]
+		public float timestep = 0.001f;     // シミュレーションの時間刻み幅
 
 		[Space]
-
-		public Vector2Int gridDim;          // グリッド数
-		public float gridCellSize;          // グリッドセルの大きさ
+		[Range(1, 128)]
+		public int gridDimX = 32;           // x方向のグリッド分割数
+		[Range(1, 128)]
+		public int gridDimY = 32;           // y方向のグリッド分割数
+		[Range(0.01f, 10f)]
+		public float gridCellSize = 1f;     // 一つの正方グリッドの縦横の大きさ
 
 		[Space]
 
@@ -43,15 +59,28 @@ namespace Seiro.GPUSandbox.SPH
 		public float wallStiffness = 100f;
 		public float mouseRadius = 2f;
 
-		private bool _hasInitialized = false;
+		[Space]
+		public Material instancingMat = null;
+		public Mesh instancingMesh = null;
+		[Range(0.01f, 2f)]
+		public float particleScale = 1f;
 
 		private int _particleCountInt;
+		private Vector2 _simulationRange;
+		private int _threadGroupSize;
 		private float _densityCoef;
 		private float _pressureGradCoef;
 		private float _viscosityLapCoef;
 
-		private ComputeBuffer _particlesBufferRead;
-		private ComputeBuffer _particlesBufferWrite;
+		private SPH_GShaderProps _shaderProps = null;
+		private GridSorter2D _gridSorter = null;
+		private ComputeBuffer _particlesBufferRead = null;
+		private ComputeBuffer _particlesBufferWrite = null;
+
+		private uint[] _instancingArgs = { 0, 0, 0, 0, 0 };
+		private ComputeBuffer _instancingArgsBuffer = null;
+
+		private SPH_Particle2D[] _dumpBuffer;
 
 		private void Start()
 		{
@@ -60,18 +89,203 @@ namespace Seiro.GPUSandbox.SPH
 				return;
 			}
 
-			
+			_particleCountInt = (int)particleCount;
+			_simulationRange = new Vector2(gridDimX * gridCellSize, gridDimY * gridCellSize);
+			_threadGroupSize = _particleCountInt / SPH.Constants.SIMULATION_BLOCK_SIZE;
 
+			_shaderProps = new SPH_GShaderProps(ref fluidCS);
+			InitParticlesBuffers(ref _particlesBufferRead, ref _particlesBufferWrite);
+			_gridSorter = new GridSorter2D(_particleCountInt, Marshal.SizeOf(typeof(SPH_Particle2D)), new Vector2Int(gridDimX, gridDimY), gridCellSize, ParticleKind.SPH);
+			InitRendering();
+			CalcCoef();
+
+			// Shader.DisableKeyword();
 		}
 
 		private void Update()
 		{
-			if (!_hasInitialized)
+			if (simulate)
+			{
+				int iterations = Mathf.Min(Mathf.FloorToInt(Time.deltaTime / timestep), maxIterations);
+				if (iterations <= 0) iterations = 1;
+				SetShaderProperties();
+				for (int i = 0; i < iterations; ++i)
+				{
+					Simulate();
+				}
+			}
+			if (Input.GetKeyDown(KeyCode.A))
+			{
+				_gridSorter.LogGridIndicesForDebug();
+			}
+			if (Input.GetKeyDown(KeyCode.Space))
+			{
+				DumpParticlesBuffer();
+			}
+
+			RenderParticles();
+		}
+
+		private void OnDestroy()
+		{
+			SPH.Functions.DestroyBuffer(ref _particlesBufferRead);
+			SPH.Functions.DestroyBuffer(ref _particlesBufferWrite);
+			SPH.Functions.DestroyBuffer(ref _instancingArgsBuffer);
+			if (_gridSorter != null)
+			{
+				_gridSorter.ReleaseResources();
+				_gridSorter = null;
+			}
+		}
+
+		private void OnDrawGizmos()
+		{
+			Vector2 range = new Vector2(gridDimX * gridCellSize, gridDimY * gridCellSize);
+			Gizmos.DrawWireCube(range * 0.5f, range);
+		}
+
+		private void InitParticlesBuffers(ref ComputeBuffer pingBuffer, ref ComputeBuffer pongBuffer)
+		{
+			SPH_Particle2D[] particles = new SPH_Particle2D[_particleCountInt];
+			Vector2 center = _simulationRange * 0.5f;
+			for (int i = 0, n = _particleCountInt; i < n; ++i)
+			{
+				SPH_Particle2D p = new SPH_Particle2D();
+				p.position = Random.insideUnitCircle * _simulationRange * 0.5f + center;
+				p.velocity = Vector2.zero;
+				p.acceleration = Vector2.zero;
+				p.density = .0f;
+				p.pressure = .0f;
+				particles[i] = p;
+			}
+
+			int count = _particleCountInt;
+			int stride = Marshal.SizeOf(typeof(SPH_Particle2D));
+			pingBuffer = new ComputeBuffer(count, stride);
+			pingBuffer.SetData(particles);
+			pongBuffer = new ComputeBuffer(count, stride);
+			pongBuffer.SetData(particles);
+		}
+
+		private void InitRendering()
+		{
+			if (instancingMat == null || instancingMesh == null)
 			{
 				return;
 			}
 
+			_instancingArgsBuffer = new ComputeBuffer(1, sizeof(uint) * 5, ComputeBufferType.IndirectArguments);
+			uint indexCount = instancingMesh.GetIndexCount(0);
+			_instancingArgs[0] = indexCount;
+			_instancingArgs[1] = (uint)_particleCountInt;
+			_instancingArgsBuffer.SetData(_instancingArgs);
+		}
 
+		void CalcCoef()
+		{
+			// 密度 定数係数 poly6 kernel : mass * 4 / (pi * h^8)
+			_densityCoef = particleMass * 4f / (Mathf.PI * Mathf.Pow(smoothlen, 8));
+			// 圧力項 勾配定数係数 spiky kernel : mass * -30 / (pi * h^5)
+			_pressureGradCoef = particleMass * -30f / (Mathf.PI * Mathf.Pow(smoothlen, 5));
+			// 粘性項 ラプラシアン定数係数 viscosity kernel : mass * 20 / ( 3 * pi * h^5)
+			_viscosityLapCoef = particleMass * 20f / (3f * Mathf.PI * Mathf.Pow(smoothlen, 5));
+		}
+
+		// シェーダ内の定数の設定
+		private void SetShaderProperties()
+		{
+			if (fluidCS == null)
+			{
+				return;
+			}
+
+			fluidCS.SetInt(_shaderProps.particleCountConstId, _particleCountInt);
+			fluidCS.SetFloat(_shaderProps.smoothlenConstId, smoothlen);
+			fluidCS.SetFloat(_shaderProps.densityKernelCoefConstId, _densityCoef);
+			fluidCS.SetFloat(_shaderProps.pressureKernelCoefConstId, _pressureGradCoef);
+			fluidCS.SetFloat(_shaderProps.viscosityKernelCoefConstId, _viscosityLapCoef);
+			fluidCS.SetFloat(_shaderProps.pressureStiffnessConstId, pressureStiffness);
+			fluidCS.SetFloat(_shaderProps.restDensityConstId, restDensity);
+			fluidCS.SetFloat(_shaderProps.viscosityConstId, viscosity);
+			fluidCS.SetFloat(_shaderProps.timestepConstId, timestep);
+
+			fluidCS.SetFloats(_shaderProps.gravityConstId, gravity.x, gravity.y);
+			fluidCS.SetFloats(_shaderProps.rangeConstId, _simulationRange.x, _simulationRange.y);
+			fluidCS.SetFloat(_shaderProps.wallStiffnessConstId, wallStiffness);
+
+			Vector2 mousePosition = Vector2.zero;
+			if (Camera.current)
+			{
+				Vector3 screenMousePosition = Input.mousePosition;
+				screenMousePosition.z = -Camera.current.transform.position.z;
+				mousePosition = Camera.current.ScreenToWorldPoint(screenMousePosition);
+			}
+			fluidCS.SetBool(_shaderProps.mouseDownConstId, Input.GetMouseButton(0));
+			fluidCS.SetFloats(_shaderProps.mousePositionConstId, mousePosition.x, mousePosition.y);
+			fluidCS.SetFloat(_shaderProps.mouseRadiusConstId, mouseRadius);
+
+			// grid sort
+			fluidCS.SetInts(_shaderProps.gridDimConstId, gridDimX, gridDimY);
+			fluidCS.SetFloat(_shaderProps.gridCellSizeConstId, gridCellSize);
+		}
+
+		private void Simulate()
+		{
+			if (fluidCS == null)
+			{
+				return;
+			}
+			
+			// パーティクルのグリッドによるソート
+			_gridSorter.GridSort(ref _particlesBufferRead);
+			
+			// 密度
+			fluidCS.SetBuffer(_shaderProps.densityKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+			fluidCS.SetBuffer(_shaderProps.densityKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+			fluidCS.SetBuffer(_shaderProps.densityKernelId, _shaderProps.indicesBufferReadId, _gridSorter.gridIndicesBuffer);
+			fluidCS.Dispatch(_shaderProps.densityKernelId, _threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+
+			// 圧力
+			fluidCS.SetBuffer(_shaderProps.pressureKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+			fluidCS.SetBuffer(_shaderProps.pressureKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+			fluidCS.Dispatch(_shaderProps.pressureKernelId, _threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+			
+			// 圧力勾配 + 速度ラプラシアン
+			fluidCS.SetBuffer(_shaderProps.forceKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+			fluidCS.SetBuffer(_shaderProps.forceKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+			fluidCS.SetBuffer(_shaderProps.forceKernelId, _shaderProps.indicesBufferReadId, _gridSorter.gridIndicesBuffer);
+			fluidCS.Dispatch(_shaderProps.forceKernelId, _threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+
+			// 外力 + 各種力の合成と漸進オイラー法による観測点座標の更新
+			fluidCS.SetBuffer(_shaderProps.integrateKernelId, _shaderProps.particlesBufferReadId, _particlesBufferRead);
+			fluidCS.SetBuffer(_shaderProps.integrateKernelId, _shaderProps.particlesBufferWriteId, _particlesBufferWrite);
+			fluidCS.Dispatch(_shaderProps.integrateKernelId, _threadGroupSize, 1, 1);
+			SPH.Functions.SwapBuffer(ref _particlesBufferRead, ref _particlesBufferWrite);
+		}
+
+		private void RenderParticles()
+		{
+			if (instancingMat == null || instancingMesh == null)
+			{
+				return;
+			}
+
+			instancingMat.SetPass(0);
+			instancingMat.SetBuffer("buf", _particlesBufferRead);
+			instancingMat.SetFloat("_Smoothlen", smoothlen * particleScale);
+			Graphics.DrawMeshInstancedIndirect(instancingMesh, 0, instancingMat, new Bounds(_simulationRange * 0.5f, _simulationRange), _instancingArgsBuffer);
+		}
+
+		private void DumpParticlesBuffer()
+		{
+			if (_dumpBuffer == null || _dumpBuffer.Length != _particleCountInt)
+			{
+				_dumpBuffer = new SPH_Particle2D[_particleCountInt];
+			}
+			_particlesBufferRead.GetData(_dumpBuffer);
 		}
 	}
 }

@@ -4,6 +4,7 @@
 	{
 		_MainTex("Texture", 2D) = "white" {}
 		_Dye("Dye", Vector) = (1.0, 1.0, 1.0, 1.0)
+		_Smoothlen("Smoothlen", float) = 0.1
 	}
 	SubShader
 	{
@@ -20,6 +21,7 @@
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
+			#include "./../../Common/Particles.cginc"
 			#include "./../Common/SPH.cginc"
 
 			struct appdata
@@ -38,20 +40,22 @@
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			float4 _Dye;
+			float _Smoothlen;
 
 #if SHADER_TARGET >= 45
-			StructuredBuffer<Particle2D> buf;
+			StructuredBuffer<SPH_Particle2D> buf;
 #endif
 
 			v2f vert(appdata v, uint id : SV_InstanceID)
 			{
-				Particle2D p = buf[id];
+				SPH_Particle2D p = buf[id];
 
-				float2 localPosition = v.vertex.xy + p.position;
+				float2 localPosition = v.vertex.xy * _Smoothlen + p.position;
 
 				v2f o;
 				o.vertex = mul(UNITY_MATRIX_VP, float4(localPosition, 0.0, 1.0));
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+				// o.color = float4(p.color, 1.0);
 				o.color = float4(p.density, p.pressure, 1.0, 1.0) * _Dye;
 				return o;
 			}

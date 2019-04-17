@@ -218,8 +218,8 @@ Camera:
   m_GameObject: {fileID: 705839291}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.024964407, g: 0.026262319, b: 0.028301895, a: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -229,8 +229,8 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
-  orthographic: 0
-  orthographic size: 5
+  orthographic: 1
+  orthographic size: 35
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -253,7 +253,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 705839291}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 8, y: 4.5, z: -10}
+  m_LocalPosition: {x: 32, y: 32, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -267,9 +267,9 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 807200440}
-  - component: {fileID: 807200441}
+  - component: {fileID: 807200442}
   m_Layer: 0
-  m_Name: SPH2D
+  m_Name: SPH2D_G
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -288,7 +288,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &807200441
+--- !u!114 &807200442
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
@@ -296,24 +296,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 807200439}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a9fa837584e70445b6230a37aa6dbf2, type: 3}
+  m_Script: {fileID: 11500000, guid: e7b7434abb4c5174d90cd069593b75c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fluidCS: {fileID: 7200000, guid: 8bb79bab2ca474cbf81aa3c5720bb843, type: 3}
-  particleCount: 512
+  fluidCS: {fileID: 7200000, guid: d16c9da705bb04cf09312657a1aa7eaf, type: 3}
+  simulate: 1
+  maxIterations: 4
+  timestep: 0.004
+  gridDimX: 64
+  gridDimY: 64
+  gridCellSize: 1
+  particleCount: 131072
   smoothlen: 0.5
   particleMass: 0.08
   restDensity: 4
   pressureStiffness: 0.57
   viscosity: 3
-  gravity: {x: 0, y: -10}
-  range: {x: 1, y: 4}
+  gravity: {x: 0, y: -9.8}
   wallStiffness: 3000
   mouseRadius: 4
-  simulate: 1
-  maxIterations: 4
-  timestep: 0.004
   instancingMat: {fileID: 2100000, guid: f0eb9d85e9d6f2840a37240970b2e64c, type: 2}
   instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  particleScale: 0.2
-  debugDraw: 1
+  particleScale: 0.4
