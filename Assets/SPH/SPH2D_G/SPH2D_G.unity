@@ -302,18 +302,18 @@ MonoBehaviour:
   fluidCS: {fileID: 7200000, guid: d16c9da705bb04cf09312657a1aa7eaf, type: 3}
   simulate: 1
   maxIterations: 4
-  timestep: 0.004
-  gridDimX: 64
-  gridDimY: 64
-  gridCellSize: 1
-  particleCount: 131072
-  smoothlen: 0.5
-  particleMass: 0.08
+  timestep: 0.002
+  gridDimX: 128
+  gridDimY: 128
+  gridCellSize: 0.3
+  particleCount: 262144
+  smoothlen: 0.3
+  particleMass: 0.04
   restDensity: 4
-  pressureStiffness: 0.57
+  pressureStiffness: 0.12
   viscosity: 3
   gravity: {x: 0, y: -9.8}
-  wallStiffness: 3000
+  wallStiffness: 20000
   mouseRadius: 4
   instancingMat: {fileID: 2100000, guid: f0eb9d85e9d6f2840a37240970b2e64c, type: 2}
   instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}

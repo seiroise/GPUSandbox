@@ -300,15 +300,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fluidCS: {fileID: 7200000, guid: 8bb79bab2ca474cbf81aa3c5720bb843, type: 3}
-  particleCount: 512
+  particleCount: 4096
   smoothlen: 0.5
   particleMass: 0.08
   restDensity: 4
   pressureStiffness: 0.57
   viscosity: 3
   gravity: {x: 0, y: -10}
-  range: {x: 1, y: 4}
-  wallStiffness: 3000
+  range: {x: 8, y: 16}
+  wallStiffness: 20000
   mouseRadius: 4
   simulate: 1
   maxIterations: 4

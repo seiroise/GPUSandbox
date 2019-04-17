@@ -56,7 +56,7 @@
 				o.vertex = mul(UNITY_MATRIX_VP, float4(localPosition, 0.0, 1.0));
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				// o.color = float4(p.color, 1.0);
-				o.color = float4(p.density, p.pressure, 1.0, 1.0) * _Dye;
+				o.color = float4(1.0, p.density, p.pressure, 1.0) * _Dye;
 				return o;
 			}
 
