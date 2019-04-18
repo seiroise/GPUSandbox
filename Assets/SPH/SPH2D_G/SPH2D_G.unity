@@ -311,7 +311,7 @@ MonoBehaviour:
   particleMass: 0.04
   restDensity: 4
   pressureStiffness: 0.12
-  viscosity: 3
+  viscosity: 1
   gravity: {x: 0, y: -9.8}
   wallStiffness: 20000
   mouseRadius: 4
