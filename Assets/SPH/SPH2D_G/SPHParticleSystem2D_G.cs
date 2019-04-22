@@ -64,6 +64,7 @@ namespace Seiro.GPUSandbox.SPH
 		public Mesh instancingMesh = null;
 		[Range(0.01f, 2f)]
 		public float particleScale = 1f;
+		public Camera viewCamera;
 
 		private int _particleCountInt;
 		private Vector2 _simulationRange;
@@ -98,6 +99,15 @@ namespace Seiro.GPUSandbox.SPH
 			_gridSorter = new GridSorter2D(_particleCountInt, Marshal.SizeOf(typeof(SPH_Particle2D)), new Vector2Int(gridDimX, gridDimY), gridCellSize, ParticleKind.SPH);
 			InitRendering();
 			CalcCoef();
+
+			if (viewCamera != null)
+			{
+				Vector3 position = _simulationRange * 0.5f;
+				position.z = viewCamera.transform.position.z;
+				viewCamera.transform.position = position;
+				viewCamera.orthographic = true;
+				viewCamera.orthographicSize = _simulationRange.y * 0.5f;
+			}
 
 			// Shader.DisableKeyword();
 		}

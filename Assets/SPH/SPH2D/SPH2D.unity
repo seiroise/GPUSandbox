@@ -300,7 +300,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fluidCS: {fileID: 7200000, guid: 8bb79bab2ca474cbf81aa3c5720bb843, type: 3}
-  particleCount: 4096
+  particleCount: 16384
   smoothlen: 0.5
   particleMass: 0.08
   restDensity: 4
