@@ -1,4 +1,4 @@
-﻿Shader "Seiro/GPUSandbox/JFA/JFStep"
+﻿Shader "Seiro/GPUSandbox/JFA/JumpFlooding"
 {
 	Properties
 	{

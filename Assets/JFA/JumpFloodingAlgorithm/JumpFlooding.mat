@@ -6,8 +6,8 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: JFStep
-  m_Shader: {fileID: 4800000, guid: 5380189e76e14a644b1b74b966682b06, type: 3}
+  m_Name: JumpFlooding
+  m_Shader: {fileID: 4800000, guid: f5ad1ff697b3f43db84b151533e357b0, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -62,7 +62,7 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _JumpStep: 0.0009765625
+    - _JumpStep: 0.00390625
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
