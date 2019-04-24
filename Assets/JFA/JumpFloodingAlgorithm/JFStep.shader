@@ -10,7 +10,7 @@
 	{
 		Cull Off
 		ZWrite Off
-		ZTest Off
+		ZTest Always
 
 		CGINCLUDE
 
@@ -29,6 +29,7 @@
 		};
 
 		sampler2D _MainTex;	// 取得する対象のデータ
+		float4 _MainTex_TexelSize;
 		float _JumpStep;	// 今回のJFAのステップ幅
 
 		v2f vert(appdata v)
@@ -36,6 +37,12 @@
 			v2f o;
 			o.vertex = UnityObjectToClipPos(v.vertex);
 			o.uv = v.uv;
+#if UNITY_UV_STARTS_AT_TOP
+			if (_MainTex_TexelSize.y > 0)
+			{
+				o.uv.y = 1 - v.uv.y;
+			}
+#endif
 			return o;
 		}
 
@@ -43,16 +50,21 @@
 		{
 			// 最も近いシードの座標 : (x, y)
 			float4 p = tex2D(_MainTex, i.uv);
+			float2 bestCoord = float2(-1, -1);
+			float flag = 0;
 			float bestDist = 9999.0;
-			float2 bestCoord = p.xy;
 			for (int y = -1; y <= 1; ++y)
 			{
 				for (int x = -1; x <= 1; ++x)
 				{
 					float2 sampleUV = i.uv + float2(x, y) * _JumpStep;
+					if (sampleUV.x < 0 || sampleUV.y < 0 || 1 <= sampleUV.x || 1 <= sampleUV.y)
+					{
+						continue;
+					}
 					float4 q = tex2D(_MainTex, sampleUV);
 					float2 qCoord = q.xy;
-					if (qCoord.x <= 0 || qCoord.y <= 0)
+					if (q.z < 1)
 					{
 						continue;
 					}
@@ -61,12 +73,23 @@
 					{
 						bestDist = dist;
 						bestCoord = qCoord;
+						flag = q.z;
 					}
 				}
 			}
+
 			p.xy = bestCoord;
-			p.z = bestDist;
+			p.z = flag;
+			p.w = bestDist;
 			return p;
+		}
+
+		float4 fragDist(v2f i) : SV_Target
+		{
+			// シード座標との距離を計算
+			float4 p = tex2D(_MainTex, i.uv);
+			float len = length(p.xy - i.uv);
+			return float4(len, len, len, 1); 
 		}
 
 		ENDCG
@@ -76,6 +99,14 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment fragJF
+			ENDCG
+		}
+
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment fragDist
 			ENDCG
 		}
 	}

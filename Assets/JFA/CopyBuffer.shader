@@ -30,16 +30,23 @@
 				float4 vertex : SV_POSITION;
 			};
 
+			sampler2D _MainTex;
+			float4 _MainTex_TexelSize;
+			float4 _Scale;
+
 			v2f vert (appdata v)
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = v.uv;
+#if UNITY_UV_STARTS_AT_TOP
+				if(_MainTex_TexelSize.y > 0)
+				{
+					o.uv.y = 1 - v.uv.y;
+				}
+#endif
 				return o;
 			}
-			
-			sampler2D _MainTex;
-			float4 _Scale;
 
 			float4 frag (v2f i) : SV_Target
 			{
