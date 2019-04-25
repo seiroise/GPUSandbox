@@ -215,6 +215,10 @@ Prefab:
       propertyPath: m_Pivot.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1723630165924130, guid: 3cb56ae8d414847b89e700a36e52a004, type: 2}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 3cb56ae8d414847b89e700a36e52a004, type: 2}
   m_IsPrefabParent: 0
@@ -406,20 +410,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fluidCS: {fileID: 7200000, guid: d16c9da705bb04cf09312657a1aa7eaf, type: 3}
   simulate: 1
-  maxIterations: 1
-  timestep: 0.003
-  gridDimX: 128
-  gridDimY: 72
-  gridCellSize: 0.5
-  particleCount: 262144
-  smoothlen: 0.3
-  particleMass: 0.04
-  restDensity: 4
-  pressureStiffness: 0.12
-  viscosity: 1
-  gravity: {x: 0, y: -9.8}
-  wallStiffness: 20000
-  mouseRadius: 4
+  simProfile: {fileID: 11400000, guid: efaf1be66617b1647a1088ba14089377, type: 2}
   instancingMat: {fileID: 2100000, guid: f0eb9d85e9d6f2840a37240970b2e64c, type: 2}
   instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
   particleScale: 0.4

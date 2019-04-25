@@ -28,6 +28,7 @@ namespace Seiro.GPUSandbox.SPH
 		[Space]
 
 		public bool simulate = true;		// シミュレーションの有効/無効
+		/*
 		[Range(1, 32)]
 		public int maxIterations = 8;		// 1フレーム内のシミュレーション反復回数
 		[Range(0.0001f, 0.02f)]
@@ -58,6 +59,9 @@ namespace Seiro.GPUSandbox.SPH
 		public Vector2 gravity = new Vector2(0f, -9.8f);
 		public float wallStiffness = 100f;
 		public float mouseRadius = 2f;
+		*/
+		[Space]
+		public SPH2DSimProfile simProfile;
 
 		[Space]
 		public Material instancingMat = null;
@@ -89,14 +93,18 @@ namespace Seiro.GPUSandbox.SPH
 			{
 				return;
 			}
+			if (simProfile == null)
+			{
 
-			_particleCountInt = (int)particleCount;
-			_simulationRange = new Vector2(gridDimX * gridCellSize, gridDimY * gridCellSize);
+			}
+
+			_particleCountInt = simProfile.particleCountInt;
+			_simulationRange = simProfile.simulationRange;
 			_threadGroupSize = _particleCountInt / SPH.Constants.SIMULATION_BLOCK_SIZE;
 
 			_shaderProps = new SPH_GShaderProps(ref fluidCS);
 			InitParticlesBuffers(ref _particlesBufferRead, ref _particlesBufferWrite);
-			_gridSorter = new GridSorter2D(_particleCountInt, Marshal.SizeOf(typeof(SPH_Particle2D)), new Vector2Int(gridDimX, gridDimY), gridCellSize, ParticleKind.SPH);
+			_gridSorter = new GridSorter2D(_particleCountInt, Marshal.SizeOf(typeof(SPH_Particle2D)), simProfile.gridDims, simProfile.gridCellSize, ParticleKind.SPH);
 			InitRendering();
 			CalcCoef();
 
@@ -116,7 +124,7 @@ namespace Seiro.GPUSandbox.SPH
 		{
 			if (simulate)
 			{
-				int iterations = Mathf.Min(Mathf.FloorToInt(Time.deltaTime / timestep), maxIterations);
+				int iterations = Mathf.Min(Mathf.FloorToInt(Time.deltaTime / simProfile.timestep), simProfile.maxIterations);
 				if (iterations <= 0) iterations = 1;
 				SetShaderProperties();
 				for (int i = 0; i < iterations; ++i)
@@ -150,8 +158,11 @@ namespace Seiro.GPUSandbox.SPH
 
 		private void OnDrawGizmos()
 		{
-			Vector2 range = new Vector2(gridDimX * gridCellSize, gridDimY * gridCellSize);
-			Gizmos.DrawWireCube(range * 0.5f, range);
+			if (simProfile != null)
+			{
+				Vector2 range = simProfile.simulationRange;
+				Gizmos.DrawWireCube(range * 0.5f, range);
+			}
 		}
 
 		private void InitParticlesBuffers(ref ComputeBuffer pingBuffer, ref ComputeBuffer pongBuffer)
@@ -193,12 +204,15 @@ namespace Seiro.GPUSandbox.SPH
 
 		void CalcCoef()
 		{
+			float pMass = simProfile.particleMass;
+			float smoothlen = simProfile.smoothlen;
+
 			// 密度 定数係数 poly6 kernel : mass * 4 / (pi * h^8)
-			_densityCoef = particleMass * 4f / (Mathf.PI * Mathf.Pow(smoothlen, 8));
+			_densityCoef = pMass * 4f / (Mathf.PI * Mathf.Pow(smoothlen, 8));
 			// 圧力項 勾配定数係数 spiky kernel : mass * -30 / (pi * h^5)
-			_pressureGradCoef = particleMass * -30f / (Mathf.PI * Mathf.Pow(smoothlen, 5));
+			_pressureGradCoef = pMass * -30f / (Mathf.PI * Mathf.Pow(smoothlen, 5));
 			// 粘性項 ラプラシアン定数係数 viscosity kernel : mass * 20 / ( 3 * pi * h^5)
-			_viscosityLapCoef = particleMass * 20f / (3f * Mathf.PI * Mathf.Pow(smoothlen, 5));
+			_viscosityLapCoef = pMass * 20f / (3f * Mathf.PI * Mathf.Pow(smoothlen, 5));
 		}
 
 		// シェーダ内の定数の設定
@@ -210,18 +224,18 @@ namespace Seiro.GPUSandbox.SPH
 			}
 
 			fluidCS.SetInt(_shaderProps.particleCountConstId, _particleCountInt);
-			fluidCS.SetFloat(_shaderProps.smoothlenConstId, smoothlen);
+			fluidCS.SetFloat(_shaderProps.smoothlenConstId, simProfile.smoothlen);
 			fluidCS.SetFloat(_shaderProps.densityKernelCoefConstId, _densityCoef);
 			fluidCS.SetFloat(_shaderProps.pressureKernelCoefConstId, _pressureGradCoef);
 			fluidCS.SetFloat(_shaderProps.viscosityKernelCoefConstId, _viscosityLapCoef);
-			fluidCS.SetFloat(_shaderProps.pressureStiffnessConstId, pressureStiffness);
-			fluidCS.SetFloat(_shaderProps.restDensityConstId, restDensity);
-			fluidCS.SetFloat(_shaderProps.viscosityConstId, viscosity);
-			fluidCS.SetFloat(_shaderProps.timestepConstId, timestep);
+			fluidCS.SetFloat(_shaderProps.pressureStiffnessConstId, simProfile.pressureStiffness);
+			fluidCS.SetFloat(_shaderProps.restDensityConstId, simProfile.restDensity);
+			fluidCS.SetFloat(_shaderProps.viscosityConstId, simProfile.viscosity);
+			fluidCS.SetFloat(_shaderProps.timestepConstId, simProfile.timestep);
 
-			fluidCS.SetFloats(_shaderProps.gravityConstId, gravity.x, gravity.y);
+			fluidCS.SetFloats(_shaderProps.gravityConstId, simProfile.gravity.x, simProfile.gravity.y);
 			fluidCS.SetFloats(_shaderProps.rangeConstId, _simulationRange.x, _simulationRange.y);
-			fluidCS.SetFloat(_shaderProps.wallStiffnessConstId, wallStiffness);
+			fluidCS.SetFloat(_shaderProps.wallStiffnessConstId, simProfile.wallStiffness);
 
 			Vector2 mousePosition = Vector2.zero;
 			if (Camera.current)
@@ -232,11 +246,11 @@ namespace Seiro.GPUSandbox.SPH
 			}
 			fluidCS.SetBool(_shaderProps.mouseDownConstId, Input.GetMouseButton(0));
 			fluidCS.SetFloats(_shaderProps.mousePositionConstId, mousePosition.x, mousePosition.y);
-			fluidCS.SetFloat(_shaderProps.mouseRadiusConstId, mouseRadius);
+			fluidCS.SetFloat(_shaderProps.mouseRadiusConstId, simProfile.mouseRadius);
 
 			// grid sort
-			fluidCS.SetInts(_shaderProps.gridDimConstId, gridDimX, gridDimY);
-			fluidCS.SetFloat(_shaderProps.gridCellSizeConstId, gridCellSize);
+			fluidCS.SetInts(_shaderProps.gridDimConstId, simProfile.gridDimX, simProfile.gridDimY);
+			fluidCS.SetFloat(_shaderProps.gridCellSizeConstId, simProfile.gridCellSize);
 		}
 
 		private void Simulate()
@@ -285,7 +299,7 @@ namespace Seiro.GPUSandbox.SPH
 
 			instancingMat.SetPass(0);
 			instancingMat.SetBuffer("buf", _particlesBufferRead);
-			instancingMat.SetFloat("_Smoothlen", smoothlen * particleScale);
+			instancingMat.SetFloat("_Smoothlen", simProfile.smoothlen * particleScale);
 			Graphics.DrawMeshInstancedIndirect(instancingMesh, 0, instancingMat, new Bounds(_simulationRange * 0.5f, _simulationRange), _instancingArgsBuffer);
 		}
 
