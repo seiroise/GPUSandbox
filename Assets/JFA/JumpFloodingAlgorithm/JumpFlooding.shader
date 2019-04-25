@@ -4,6 +4,7 @@
 	{
 		_MainTex("Texture", 2D) = "white" {}
 		_JumpStep("Jump Step", float) = 0
+		_DistScale("Dist Scale", float) = 1
 	}
 
 	SubShader
@@ -31,6 +32,7 @@
 		sampler2D _MainTex;	// 取得する対象のデータ
 		float4 _MainTex_TexelSize;
 		float _JumpStep;	// 今回のJFAのステップ幅
+		float _DistScale;	// 距離描画時のスケール
 
 		v2f vert(appdata v)
 		{
@@ -88,7 +90,7 @@
 		{
 			// シード座標との距離を計算
 			float4 p = tex2D(_MainTex, i.uv);
-			float len = length(p.xy - i.uv);
+			float len = length(p.xy - i.uv) * _DistScale;
 			return float4(len, len, len, 1); 
 		}
 

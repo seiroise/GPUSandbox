@@ -7,8 +7,8 @@
 #pragma kernel ForceCS
 #pragma kernel IntegrateCS
 
-#include "./../../Common/Particles.cginc"
-#include "./../Common/SPH.cginc"
+#include "Assets/CGInc/Particles.cginc"
+#include "Assets/CGInc/SPH.cginc"
 
 cbuffer cb : register(b0)
 {

@@ -19,8 +19,8 @@
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
-			#include "./../../Common/Particles.cginc"
-			#include "./../Common/NeighborSearch2D.cginc"
+			#include "Assets/CGInc/Particles.cginc"
+			#include "Assets/CGInc/NeighborSearch2D.cginc"
 
 			struct appdata
 			{

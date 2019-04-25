@@ -1,16 +1,21 @@
-﻿Shader "Seiro/SPH/SPH2D_SimpleInstancing"
+Shader "Seiro/GPUSandbox/MRTInstancingParticle"
 {
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
 		_Dye("Dye", Vector) = (1.0, 1.0, 1.0, 1.0)
 		_Smoothlen("Smoothlen", float) = 0.1
+		_AlphaClip("Alpha Clip", range(0, 1)) = 0.01
 	}
 	SubShader
 	{
-		Tags { "Queue"="Transparent" "RenderType"="Transparet" }
-		Cull Off ZWrite Off
-		Blend SrcAlpha OneMinusSrcAlpha
+		Tags { "Queue" = "Transparent" "RenderType" = "Transparet" }
+		Cull Off 
+		Lighting Off
+		ZWrite Off
+
+		Blend 0 SrcAlpha OneMinusSrcAlpha
+		Blend 1 Off
 
 		Pass
 		{
@@ -22,7 +27,6 @@
 
 			#include "UnityCG.cginc"
 			#include "Assets/CGInc/Particles.cginc"
-			#include "Assets/CGInc/SPH.cginc"
 
 			struct appdata
 			{
@@ -37,10 +41,17 @@
 				float4 color : COLOR;
 			};
 
+			struct mrtbuffer
+			{
+				fixed4 col0 : COLOR0;
+				float4 col1 : COLOR1;
+			};
+
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			float4 _Dye;
 			float _Smoothlen;
+			float _AlphaClip;
 
 #if SHADER_TARGET >= 45
 			StructuredBuffer<SPH_Particle2D> buf;
@@ -60,11 +71,17 @@
 				return o;
 			}
 
-			fixed4 frag(v2f i) : SV_Target
+			mrtbuffer frag(v2f i)
 			{
-				fixed4 col = tex2D(_MainTex, i.uv);
-				col.rgb *= i.color.rgb;
-				return col;
+				fixed4 c = tex2D(_MainTex, i.uv);
+				clip(c.a - _AlphaClip);
+				c.rgb *= i.color.rgb;
+				c.rgb *= c.a;
+
+				mrtbuffer o;
+				o.col0 = c;
+				o.col1 = float4(i.vertex.xy / _ScreenParams.xy, 1, 0);
+				return o;
 			}
 
 			ENDCG

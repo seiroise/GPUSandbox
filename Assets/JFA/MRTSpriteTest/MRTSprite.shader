@@ -40,11 +40,13 @@
 				float4 col1 : COLOR1;
 			};
 
+			float _AlphaClip;
+
 			mrtbuffer SpriteFragMRT(v2f IN)
 			{
 				mrtbuffer o;
 				fixed4 c = SampleSpriteTexture(IN.texcoord) * IN.color;
-				clip(c.a - 0.01);
+				clip(c.a - _AlphaClip);
 				c.rgb *= c.a;
 				o.col0 = c;
 				float2 screenUV = IN.vertex.xy;
