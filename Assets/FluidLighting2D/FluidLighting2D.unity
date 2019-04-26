@@ -113,53 +113,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1774134074
-GameObject:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  serializedVersion: 5
-  m_Component:
-  - component: {fileID: 1774134075}
-  - component: {fileID: 1774134076}
-  m_Layer: 0
-  m_Name: SPH2D
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1774134075
-Transform:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1774134074}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1774134076
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1774134074}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7b7434abb4c5174d90cd069593b75c9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  fluidCS: {fileID: 7200000, guid: d16c9da705bb04cf09312657a1aa7eaf, type: 3}
-  simulate: 1
-  simProfile: {fileID: 11400000, guid: efaf1be66617b1647a1088ba14089377, type: 2}
-  instancingMat: {fileID: 2100000, guid: 3b515a9c9a86a6f4b8ac2588fa89af33, type: 2}
-  instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  particleScale: 1
-  viewCamera: {fileID: 2088625467}
 --- !u!1 &2088625464
 GameObject:
   m_ObjectHideFlags: 0
@@ -172,6 +125,7 @@ GameObject:
   - component: {fileID: 2088625466}
   - component: {fileID: 2088625465}
   - component: {fileID: 2088625469}
+  - component: {fileID: 2088625470}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -256,4 +210,23 @@ MonoBehaviour:
   display: 0
   jfaMat: {fileID: 2100000, guid: 24d4eed50a010544ca94080459f08764, type: 2}
   maxStep: 10
+  lightingMat: {fileID: 2100000, guid: fdfcc323ca007af4b8b26994521f32d7, type: 2}
   copyMat: {fileID: 2100000, guid: 554a8b38c52cb7542bb25317ac58d7db, type: 2}
+--- !u!114 &2088625470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 2088625464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7b7434abb4c5174d90cd069593b75c9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fluidCS: {fileID: 7200000, guid: d16c9da705bb04cf09312657a1aa7eaf, type: 3}
+  simulate: 1
+  simProfile: {fileID: 11400000, guid: 5b64ea1b9bbe8364db7427046f6caeb6, type: 2}
+  instancingMat: {fileID: 2100000, guid: 3b515a9c9a86a6f4b8ac2588fa89af33, type: 2}
+  instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+  particleScale: 1
+  viewCamera: {fileID: 2088625467}

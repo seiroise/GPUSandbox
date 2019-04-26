@@ -8,21 +8,27 @@ namespace Seiro.GPUSandbox.JFA
 
 		public enum DisplayBuf
 		{
-			Main, JFAseed, JFAFill, DistanceField
+			Main, JFAseed, JFAFill, DistanceField, Lighting
 		}
 
 		public DisplayBuf display = DisplayBuf.Main;
+		[Header("JFA")]
 		public Material jfaMat;
 		[Range(1, 12)]
 		public int maxStep = 10;
+		[Header("Lighting")]
+		public Material lightingMat;
+		[Header("Copy")]
 		public Material copyMat;
 
 		private RenderTexture _mainBuf;
 		private RenderTexture _jfaSeedBuf;
+		private RenderTexture _lightingBuf;
+		private RenderTexture _distanceFieldBuf;
 
 		// jfa用のテンポラリバッファ
 		private int _writeIdx = 0;
-		private RenderTexture[] _jfaTempBufs = { null, null};
+		private RenderTexture[] _jfaFillBufs = { null, null};
 
 		private void OnEnable()
 		{
@@ -54,12 +60,12 @@ namespace Seiro.GPUSandbox.JFA
 			if (maxStep > 0)
 			{
 				_writeIdx = 0;
-				Graphics.Blit(_jfaSeedBuf, _jfaTempBufs[_writeIdx], copyMat);
+				Graphics.Blit(_jfaSeedBuf, _jfaFillBufs[_writeIdx], copyMat);
 				for (int i = 0; i < maxStep; ++i)
 				{
 					jfaMat.SetFloat("_JumpStep", 1f / (2 << i));
 					_writeIdx = (i + 1) % 2;
-					Graphics.Blit(_jfaTempBufs[i % 2], _jfaTempBufs[_writeIdx], jfaMat, 0);
+					Graphics.Blit(_jfaFillBufs[i % 2], _jfaFillBufs[_writeIdx], jfaMat, 0);
 				}
 			}
 
@@ -73,11 +79,22 @@ namespace Seiro.GPUSandbox.JFA
 			}
 			else if (display == DisplayBuf.JFAFill)
 			{
-				Graphics.Blit(_jfaTempBufs[_writeIdx], destination, copyMat);
+				Graphics.Blit(_jfaFillBufs[_writeIdx], destination, copyMat);
+			}
+			else if (display == DisplayBuf.DistanceField)
+			{
+				Graphics.Blit(_jfaFillBufs[_writeIdx], destination, jfaMat, 1);
+			}
+			else if (display == DisplayBuf.Lighting)
+			{
+				Graphics.Blit(_jfaFillBufs[_writeIdx], _distanceFieldBuf, jfaMat, 1);
+				lightingMat.SetTexture("_BaseColor", _mainBuf);
+				lightingMat.SetTexture("_DistanceField", _distanceFieldBuf);
+				Graphics.Blit(_lightingBuf, destination, lightingMat);
 			}
 			else
 			{
-				Graphics.Blit(_jfaTempBufs[_writeIdx], destination, jfaMat, 1);
+				Graphics.Blit(source, destination);
 			}
 		}
 
@@ -99,16 +116,25 @@ namespace Seiro.GPUSandbox.JFA
 
 			_mainBuf = RenderTexture.GetTemporary(descMain);
 			_mainBuf.name = "main";
+
 			_jfaSeedBuf = RenderTexture.GetTemporary(descJFA);
 			_jfaSeedBuf.name = "jfa";
 			_jfaSeedBuf.filterMode = FilterMode.Point;
 
-			_jfaTempBufs[0] = RenderTexture.GetTemporary(descJFA);
-			_jfaTempBufs[0].name = "jfa temp 0";
-			_jfaTempBufs[0].filterMode = FilterMode.Point;
-			_jfaTempBufs[1] = RenderTexture.GetTemporary(descJFA);
-			_jfaTempBufs[1].name = "jfa temp 1";
-			_jfaTempBufs[1].filterMode = FilterMode.Point;
+			_jfaFillBufs[0] = RenderTexture.GetTemporary(descJFA);
+			_jfaFillBufs[0].name = "jfa temp 0";
+			_jfaFillBufs[0].filterMode = FilterMode.Point;
+
+			_jfaFillBufs[1] = RenderTexture.GetTemporary(descJFA);
+			_jfaFillBufs[1].name = "jfa temp 1";
+			_jfaFillBufs[1].filterMode = FilterMode.Point;
+
+			_lightingBuf = RenderTexture.GetTemporary(descMain);
+			_lightingBuf.name = "lighting";
+
+			_distanceFieldBuf = RenderTexture.GetTemporary(descJFA);
+			_distanceFieldBuf.name = "distance field";
+			_distanceFieldBuf.filterMode = FilterMode.Bilinear;
 		}
 
 		private void SetRT(Camera cam)
@@ -121,15 +147,20 @@ namespace Seiro.GPUSandbox.JFA
 
 		private void ReleaseResources()
 		{
-			if (_mainBuf != null)
+			ReleaseRT(ref _mainBuf);
+			ReleaseRT(ref _jfaSeedBuf);
+			ReleaseRT(ref _jfaFillBufs[0]);
+			ReleaseRT(ref _jfaFillBufs[1]);
+			ReleaseRT(ref _lightingBuf);
+			ReleaseRT(ref _distanceFieldBuf);
+		}
+
+		private void ReleaseRT(ref RenderTexture rt)
+		{
+			if (rt != null)
 			{
-				_mainBuf.Release();
-				_mainBuf = null;
-			}
-			if (_jfaSeedBuf != null)
-			{
-				_jfaSeedBuf.Release();
-				_jfaSeedBuf = null;
+				rt.Release();
+				rt = null;
 			}
 		}
 
