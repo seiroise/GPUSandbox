@@ -55,22 +55,20 @@
 			float2 bestCoord = float2(-1, -1);
 			float flag = 0;
 			float bestDist = 9999.0;
-			for (int y = -1; y <= 1; ++y)
+			float2 spos = i.uv * _ScreenParams.xy;
+			for (float y = -1; y <= 1; ++y)
 			{
-				for (int x = -1; x <= 1; ++x)
+				for (float x = -1; x <= 1; ++x)
 				{
-					float2 sampleUV = i.uv + float2(x, y) * _JumpStep;
-					if (sampleUV.x < 0 || sampleUV.y < 0 || 1 <= sampleUV.x || 1 <= sampleUV.y)
-					{
-						continue;
-					}
-					float4 q = tex2D(_MainTex, sampleUV);
+					float2 sampleUV = spos + float2(x, y) * _JumpStep;
+					float4 q = tex2D(_MainTex, sampleUV / _ScreenParams.xy);
 					float2 qCoord = q.xy;
 					if (q.z < 1)
 					{
 						continue;
 					}
-					float dist = length(i.uv - qCoord);
+					float2 pCoord = i.uv;
+					float dist = length(pCoord - qCoord);
 					if (bestDist > dist)
 					{
 						bestDist = dist;
@@ -82,16 +80,22 @@
 
 			p.xy = bestCoord;
 			p.z = flag;
-			p.w = bestDist;
 			return p;
 		}
 
 		float4 fragDist(v2f i) : SV_Target
 		{
 			// シード座標との距離を計算
-			float4 p = tex2D(_MainTex, i.uv);
-			float len = length(p.xy - i.uv) * _DistScale;
-			return float4(len, len, len, 1); 
+			// 距離計算は、アスペクト比を考慮する必要があるので注意する。
+			float2 p = i.uv;
+			float2 q = tex2D(_MainTex, i.uv).xy;
+			float2 d = abs(p - q);
+			// return float4(d * _DistScale, 0, 1);
+			float len = sqrt(dot(d, d)) * _DistScale;
+			// return pow(float4(p-q, 0, 1), 100);
+			// return float4(i.uv, 0, 1);
+			// return tex2D(_MainTex, i.uv);
+			return fixed4(len, len, len, 1); 
 		}
 
 		ENDCG

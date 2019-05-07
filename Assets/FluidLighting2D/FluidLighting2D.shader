@@ -1,4 +1,4 @@
-﻿Shader "Seiro/GPUSandbox/Lighting2D"
+﻿Shader "Seiro/GPUSandbox/FluidLighting2D"
 {
 	Properties
 	{
@@ -83,8 +83,9 @@
 			
 			fixed4 frag (v2f i) : SV_Target
 			{
-				fixed4 col;
+				fixed4 col = fixed4(0, 0, 0, 0);
 				float2 origin = i.uv;
+				// return tex2D(_DistanceField, i.uv);
 
 				for (float i = 0; i < RAYS_PER_PIXEL; ++i)
 				{
@@ -101,7 +102,7 @@
 					}
 				}
 
-				col *= (1 / RAYS_PER_PIXEL);
+				col = col / RAYS_PER_PIXEL;
 				return col;
 			}
 			ENDCG

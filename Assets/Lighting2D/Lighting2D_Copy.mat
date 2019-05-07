@@ -6,8 +6,8 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: JFAStep
-  m_Shader: {fileID: 4800000, guid: f5ad1ff697b3f43db84b151533e357b0, type: 3}
+  m_Name: Lighting2D_Copy
+  m_Shader: {fileID: 4800000, guid: c49e1e28a7e9a6547869590391ecb485, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -58,12 +58,10 @@ Material:
     - _BumpScale: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
-    - _DistScale: 10
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _JumpStep: 0.00390625
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
@@ -76,3 +74,4 @@ Material:
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _Scale: {r: 1, g: 1, b: 1, a: 1}

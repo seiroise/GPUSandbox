@@ -355,8 +355,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   display: 3
+  jfaResolution: 4
   jfaMat: {fileID: 2100000, guid: a733278ac92ed8c40939a69d6106143b, type: 2}
-  maxStep: 10
+  maxStep: 7
+  lightingMat: {fileID: 0}
   copyMat: {fileID: 2100000, guid: 98d3e94d78b1dc14e9c84fbe5cb18ec3, type: 2}
 --- !u!1 &1245809654
 GameObject:

@@ -207,9 +207,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db42a7d6d26bc9144aecc407a45a98ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  display: 0
+  display: 4
+  jfaResolution: 4
   jfaMat: {fileID: 2100000, guid: 24d4eed50a010544ca94080459f08764, type: 2}
-  maxStep: 10
+  maxStep: 7
   lightingMat: {fileID: 2100000, guid: fdfcc323ca007af4b8b26994521f32d7, type: 2}
   copyMat: {fileID: 2100000, guid: 554a8b38c52cb7542bb25317ac58d7db, type: 2}
 --- !u!114 &2088625470

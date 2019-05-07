@@ -10,26 +10,7 @@ namespace Seiro.GPUSandbox.SPH
         public static readonly int SIMULATION_BLOCK_SIZE = 512;
     }
 
-	public static class Functions
-	{
-		public static void DestroyBuffer(ref ComputeBuffer buffer)
-		{
-			if (buffer != null)
-			{
-				buffer.Release();
-				buffer = null;
-			}
-		}
-
-		public static void SwapBuffer(ref ComputeBuffer ping, ref ComputeBuffer pong)
-		{
-			ComputeBuffer temp = ping;
-			ping = pong;
-			pong = temp;
-		}
-	}
-
-	public enum ParticleCount
+    public enum ParticleCount
     {
         N_512 = 1 << 9,
         N_1K = 1 << 10,
@@ -43,64 +24,64 @@ namespace Seiro.GPUSandbox.SPH
         N_260K = 1 << 18,
     }
 
-	public class SPHShaderProps
-	{
-		// kernel
-		public readonly int densityKernelId;
-		public readonly int pressureKernelId;
-		public readonly int forceKernelId;
-		public readonly int integrateKernelId;
+    public class SPHShaderProps
+    {
+        // kernel
+        public readonly int densityKernelId;
+        public readonly int pressureKernelId;
+        public readonly int forceKernelId;
+        public readonly int integrateKernelId;
 
-		// buffer
-		public readonly int particlesBufferReadId;
-		public readonly int particlesBufferWriteId;
+        // buffer
+        public readonly int particlesBufferReadId;
+        public readonly int particlesBufferWriteId;
 
-		//constant variable
-		public readonly int timestepConstId;
-		public readonly int particleCountConstId;
-		public readonly int smoothlenConstId;
-		public readonly int densityKernelCoefConstId;
-		public readonly int pressureKernelCoefConstId;
-		public readonly int viscosityKernelCoefConstId;
-		public readonly int pressureStiffnessConstId;
-		public readonly int restDensityConstId;
-		public readonly int viscosityConstId;
+        //constant variable
+        public readonly int timestepConstId;
+        public readonly int particleCountConstId;
+        public readonly int smoothlenConstId;
+        public readonly int densityKernelCoefConstId;
+        public readonly int pressureKernelCoefConstId;
+        public readonly int viscosityKernelCoefConstId;
+        public readonly int pressureStiffnessConstId;
+        public readonly int restDensityConstId;
+        public readonly int viscosityConstId;
 
-		public readonly int gravityConstId;
-		public readonly int rangeConstId;
-		public readonly int wallStiffnessConstId;
+        public readonly int gravityConstId;
+        public readonly int rangeConstId;
+        public readonly int wallStiffnessConstId;
 
-		public readonly int mouseDownConstId;
-		public readonly int mousePositionConstId;
-		public readonly int mouseRadiusConstId;
+        public readonly int mouseDownConstId;
+        public readonly int mousePositionConstId;
+        public readonly int mouseRadiusConstId;
 
-		public SPHShaderProps(ref ComputeShader cs)
-		{
-			densityKernelId = cs.FindKernel("DensityCS");
-			pressureKernelId = cs.FindKernel("PressureCS");
-			forceKernelId = cs.FindKernel("ForceCS");
-			integrateKernelId = cs.FindKernel("IntegrateCS");
+        public SPHShaderProps(ref ComputeShader cs)
+        {
+            densityKernelId = cs.FindKernel("DensityCS");
+            pressureKernelId = cs.FindKernel("PressureCS");
+            forceKernelId = cs.FindKernel("ForceCS");
+            integrateKernelId = cs.FindKernel("IntegrateCS");
 
-			particlesBufferReadId = Shader.PropertyToID("_ParticlesBufferRead");
-			particlesBufferWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
+            particlesBufferReadId = Shader.PropertyToID("_ParticlesBufferRead");
+            particlesBufferWriteId = Shader.PropertyToID("_ParticlesBufferWrite");
 
-			timestepConstId = Shader.PropertyToID("_Timestep");
-			particleCountConstId = Shader.PropertyToID("_ParticleCount");
-			smoothlenConstId = Shader.PropertyToID("_Smoothlen");
-			densityKernelCoefConstId = Shader.PropertyToID("_DensityKernelCoef");
-			pressureKernelCoefConstId = Shader.PropertyToID("_PressureKernelCoef");
-			viscosityKernelCoefConstId = Shader.PropertyToID("_ViscosityKernelCoef");
-			pressureStiffnessConstId = Shader.PropertyToID("_PressureStiffness");
-			restDensityConstId = Shader.PropertyToID("_RestDensity");
-			viscosityConstId = Shader.PropertyToID("_Viscosity");
+            timestepConstId = Shader.PropertyToID("_Timestep");
+            particleCountConstId = Shader.PropertyToID("_ParticleCount");
+            smoothlenConstId = Shader.PropertyToID("_Smoothlen");
+            densityKernelCoefConstId = Shader.PropertyToID("_DensityKernelCoef");
+            pressureKernelCoefConstId = Shader.PropertyToID("_PressureKernelCoef");
+            viscosityKernelCoefConstId = Shader.PropertyToID("_ViscosityKernelCoef");
+            pressureStiffnessConstId = Shader.PropertyToID("_PressureStiffness");
+            restDensityConstId = Shader.PropertyToID("_RestDensity");
+            viscosityConstId = Shader.PropertyToID("_Viscosity");
 
-			gravityConstId = Shader.PropertyToID("_Gravity");
-			rangeConstId = Shader.PropertyToID("_Range");
-			wallStiffnessConstId = Shader.PropertyToID("_WallStiffness");
+            gravityConstId = Shader.PropertyToID("_Gravity");
+            rangeConstId = Shader.PropertyToID("_Range");
+            wallStiffnessConstId = Shader.PropertyToID("_WallStiffness");
 
-			mouseDownConstId = Shader.PropertyToID("_MouseDown");
-			mousePositionConstId = Shader.PropertyToID("_MousePosition");
-			mouseRadiusConstId = Shader.PropertyToID("_MouseRadius");
-		}
-	}
+            mouseDownConstId = Shader.PropertyToID("_MouseDown");
+            mousePositionConstId = Shader.PropertyToID("_MousePosition");
+            mouseRadiusConstId = Shader.PropertyToID("_MouseRadius");
+        }
+    }
 }
