@@ -44,7 +44,7 @@
 		};
 
 		float _AlphaClip;
-		float4 _Substance;
+		fixed4 _Substance;
 
 		mrtbuffer SpriteFragMRT(v2f IN)
 		{
@@ -56,7 +56,7 @@
 			o.col0 = c;
 			o.col1 = _Substance;
 			float2 seed = IN.vertex.xy / _ScreenParams.xy;
-			o.col2 = float4(seed, 1, 1);
+			o.col2 = float4(seed, 1, 0);
 			return o;
 		}
 

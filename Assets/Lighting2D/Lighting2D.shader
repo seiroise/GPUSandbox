@@ -16,9 +16,9 @@
 
 		CGINCLUDE
 
-		#define MAX_MARCHING_STEP 16.0
-		#define RAYS_PER_PIXEL 32.0
-		#define EPSILON 0.002
+		#define MAX_MARCHING_STEP 32
+		#define RAYS_PER_PIXEL 32
+		#define EPSILON 0.01
 		#define PI 3.141593
 		#define HASHSCALE1 .1031
 
@@ -37,7 +37,7 @@
 		sampler2D _BaseColor;
 		float4 _BaseColor_TexelSize;
 		sampler2D _Substance;
-		sampler2D _DistanceField;
+		sampler2D_float _DistanceField;
 
 		v2f vert(appdata v)
 		{
@@ -69,11 +69,12 @@
 			{
 				float2 samplePoint = origin + ray * d;
 				float4 dist = tex2D(_DistanceField, samplePoint);
+				// float4 dist = tex2D(_DistanceField, samplePoint / _ScreenParams.xy);
 				d += dist.x;
 				if (dist.x <= EPSILON)
 				{
-					hitPos = samplePoint;
-					// hitPos = origin + ray * (d + EPSILON);
+					// hitPos = samplePoint;
+					hitPos = origin + ray * (d + EPSILON);
 					return true;
 				}
 			}
@@ -121,6 +122,7 @@
 			}
 			ENDCG
 		}
+
 		Pass
 		{
 			CGPROGRAM
@@ -131,9 +133,10 @@
 			fixed4 frag (v2f i) : SV_Target
 			{
 				float2 origin = i.uv;
+				// float2 origin = i.uv * _ScreenParams.xy;
 				float3 color = float3(0, 0, 0);
 				float emis = 0;
-				// float count = 0;
+				float count = 0;
 
 				float aspect = _ScreenParams.x / _ScreenParams.y;
 				float invAspect = 1 / aspect;
@@ -143,7 +146,7 @@
 					float2 hitPos = float2(0, 0);
 					float d = 0;
 
-					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2 * PI) * invAspect,
+					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2 * PI),
 										sin(i / RAYS_PER_PIXEL * 2 * PI));
 
 					if(trace(origin, ray, hitPos, d))
@@ -157,13 +160,14 @@
 						emis += material.x * att;
 						color += material.x * baseColor * att;
 						// color += baseColor;
-						// count++;
+						count++;
 					}
 				}
-				// float t = count / RAYS_PER_PIXEL;
-				// color = float3(t, t, t);
-				color *= (1 / RAYS_PER_PIXEL);
-				return fixed4(pow(color, 0.5), 1);
+				float t = count / RAYS_PER_PIXEL;
+				color = float3(t, t, t);
+				// color *= (1.0 / RAYS_PER_PIXEL);
+				// color *= 0.5;
+				return fixed4(pow(color, 1 / 2.2), 1);
 			}
 
 			ENDCG

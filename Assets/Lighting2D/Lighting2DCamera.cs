@@ -29,6 +29,9 @@ namespace Seiro.GPUSandbox.Lighting2D
         public Material lightingMat;
         public Material copyMat;
 
+		public Vector4 jfaCopyScale = Vector4.one;
+		public float dfCopyScale = 1f;
+
         private RenderTexture _baseColor;
         private RenderTexture _substance;
         private RenderTexture _jfaSeed;
@@ -57,12 +60,16 @@ namespace Seiro.GPUSandbox.Lighting2D
                 Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], copyMat);
                 for (int i = 0; i < maxStep; ++i)
                 {
-                    jfaMat.SetFloat("_JumpStep", 1 << (maxStep - (i + 1)));
-                    _writeIdx = (i + 1) % 2;
+
+					// jfaMat.SetFloat("_JumpStep", 1 << (maxStep - (i + 1)));
+					// jfaMat.SetFloat("_JumpStep", 1 / (1 << (maxStep - (i + 1))));
+					jfaMat.SetFloat("_JumpStep", Mathf.Pow(2, maxStep - (i + 1)));
+					_writeIdx = (i + 1) % 2;
                     Graphics.Blit(_jfaWorks[i % 2], _jfaWorks[_writeIdx], jfaMat, 0);
                 }
             }
 
+			copyMat.SetVector("_Scale", Vector4.one);
             if (display == Display.BaseColor)
             {
                 Graphics.Blit(_baseColor, destination, copyMat);
@@ -73,19 +80,24 @@ namespace Seiro.GPUSandbox.Lighting2D
             }
             else if (display == Display.JfaSeed)
             {
+				copyMat.SetVector("_Scale", jfaCopyScale);
                 Graphics.Blit(_jfaSeed, destination, copyMat);
             }
             else if (display == Display.JfaFill)
             {
-                Graphics.Blit(_jfaWorks[_writeIdx], destination, copyMat);
+				copyMat.SetVector("_Scale", jfaCopyScale);
+				Graphics.Blit(_jfaWorks[_writeIdx], destination, copyMat);
             }
             else if (display == Display.DistanceField)
             {
-                Graphics.Blit(_jfaWorks[_writeIdx], destination, jfaMat, 1);
+				jfaMat.SetFloat("_DistScale", dfCopyScale);
+                Graphics.Blit(_jfaWorks[_writeIdx], _distanceField, jfaMat, 1);
+				Graphics.Blit(_distanceField, destination, copyMat);
             }
             else if (display == Display.Lighting)
             {
-                Graphics.Blit(_jfaWorks[_writeIdx], _distanceField, jfaMat, 1);
+				jfaMat.SetFloat("_DistScale", 1f);
+				Graphics.Blit(_jfaWorks[_writeIdx], _distanceField, jfaMat, 1);
                 lightingMat.SetTexture("_BaseColor", _baseColor);
                 lightingMat.SetTexture("_Substance", _substance);
                 lightingMat.SetTexture("_DistanceField", _distanceField);

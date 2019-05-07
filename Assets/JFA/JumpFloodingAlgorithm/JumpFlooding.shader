@@ -29,7 +29,7 @@
 			float4 vertex : SV_POSITION;
 		};
 
-		sampler2D _MainTex;	// 取得する対象のデータ
+		sampler2D_float _MainTex;	// 取得する対象のデータ
 		float4 _MainTex_TexelSize;
 		float _JumpStep;	// 今回のJFAのステップ幅
 		float _DistScale;	// 距離描画時のスケール
@@ -83,19 +83,75 @@
 			return p;
 		}
 
+		float4 fragJF_1(v2f i) :SV_Target
+		{
+			float aspect = _ScreenParams.x / _ScreenParams.y;
+			float2 pCoord = i.uv * _ScreenParams.xy;
+
+			float bestDist = 9999.0;
+			float2 bestCoord = float2(0, 0);
+			float flag = 0;
+
+			for (float y = -1; y <= 1; ++y)
+			{
+				for (float x = -1; x <= 1; ++x)
+				{
+					float2 sampleCoord = pCoord + float2(x, y) * _JumpStep;
+					float2 sampleUV = sampleCoord / _ScreenParams.xy;
+					float4 data = tex2D(_MainTex, sampleUV);
+					float dist = length(data.xy - i.uv);
+					if (data.z > 0 && bestDist > dist)
+					{
+						bestDist = dist;
+						bestCoord = data.xy;
+						flag = 1;
+					}
+				}
+			}
+
+			return float4(bestCoord, flag, 1);
+		}
+
 		float4 fragDist(v2f i) : SV_Target
 		{
 			// シード座標との距離を計算
 			// 距離計算は、アスペクト比を考慮する必要があるので注意する。
-			float2 p = i.uv;
-			float2 q = tex2D(_MainTex, i.uv).xy;
-			float2 d = abs(p - q);
+			float aspect = _ScreenParams.x / _ScreenParams.y;
+			float2 p = i.uv * aspect;
+			float2 q = tex2D(_MainTex, i.uv).xy * aspect;
+			float2 d = p - q;
 			// return float4(d * _DistScale, 0, 1);
 			float len = sqrt(dot(d, d)) * _DistScale;
 			// return pow(float4(p-q, 0, 1), 100);
 			// return float4(i.uv, 0, 1);
 			// return tex2D(_MainTex, i.uv);
-			return fixed4(len, len, len, 1); 
+			
+			return float4(len, len, len, 1);
+		}
+
+		float4 fragDist_1(v2f i) : SV_Target
+		{
+			float aspect = _ScreenParams.x / _ScreenParams.y;
+			float2 p = i.uv * aspect * _ScreenParams.xy;
+			float2 q = tex2D(_MainTex, i.uv).xy * aspect * _ScreenParams.xy;
+			// float2 p = i.uv * aspect;
+			// float2 q = tex2D(_MainTex, i.uv).xy * aspect;
+			float2 d = p - q;
+			// float l = round(length(d) * _DistScale;
+			float l = smoothstep( 0.001 , 0.999 , length(d) * _DistScale);
+			return float4(l, l, l, 1);
+		}
+
+		float4 fragDist_2(v2f i) : SV_Target
+		{
+			// float aspect = _ScreenParams.x / _ScreenParams.y;
+			float2 p = i.uv;
+			float2 q = tex2D(_MainTex, i.uv).xy;
+			float2 d = p - q;
+			// float l = smoothstep(0.00001 , 0.99, length(d));
+			float l = lerp(0, 1, length(d) * 1.02 - 0.01) * _DistScale;
+			// float l = length(d);
+			return float4(l, l, l, 1);
 		}
 
 		ENDCG
@@ -104,7 +160,7 @@
 		{
 			CGPROGRAM
 			#pragma vertex vert
-			#pragma fragment fragJF
+			#pragma fragment fragJF_1
 			ENDCG
 		}
 
@@ -112,7 +168,7 @@
 		{
 			CGPROGRAM
 			#pragma vertex vert
-			#pragma fragment fragDist
+			#pragma fragment fragDist_2
 			ENDCG
 		}
 	}
