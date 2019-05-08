@@ -5,6 +5,7 @@
 		_MainTex("Texture", 2D) = "white" {}
 		_JumpStep("Jump Step", float) = 0
 		_DistScale("Dist Scale", float) = 1
+		_EdgeThreshold("Edge Threshold", Range(0, 1)) = 0.5
 	}
 
 	SubShader
@@ -86,6 +87,8 @@
 		float4 fragJF_1(v2f i) :SV_Target
 		{
 			float aspect = _ScreenParams.x / _ScreenParams.y;
+
+			float4 data = tex2D(_MainTex, i.uv);
 			float2 pCoord = i.uv * _ScreenParams.xy;
 
 			float bestDist = 9999.0;
@@ -98,18 +101,18 @@
 				{
 					float2 sampleCoord = pCoord + float2(x, y) * _JumpStep;
 					float2 sampleUV = sampleCoord / _ScreenParams.xy;
-					float4 data = tex2D(_MainTex, sampleUV);
-					float dist = length(data.xy - i.uv);
-					if (data.z > 0 && bestDist > dist)
+					float4 d = tex2D(_MainTex, sampleUV);
+					float dist = length(d.xy - i.uv);
+					if (d.z > 0 && bestDist > dist)
 					{
 						bestDist = dist;
-						bestCoord = data.xy;
+						bestCoord = d.xy;
 						flag = 1;
 					}
 				}
 			}
 
-			return float4(bestCoord, flag, 1);
+			return float4(bestCoord, flag, data.w);
 		}
 
 		float4 fragDist(v2f i) : SV_Target
@@ -144,18 +147,50 @@
 
 		float4 fragDist_2(v2f i) : SV_Target
 		{
-			// float aspect = _ScreenParams.x / _ScreenParams.y;
 			float2 p = i.uv;
-			float2 q = tex2D(_MainTex, i.uv).xy;
+			float4 data = tex2D(_MainTex, i.uv);
+			float2 q = data.xy;
 			float2 d = p - q;
-			// float l = smoothstep(0.00001 , 0.99, length(d));
-			float l = lerp(0, 1, length(d) * 1.02 - 0.01) * _DistScale;
-			// float l = length(d);
+			// そのまま出力すると細かい誤差が残るので、下駄をはかせて誤差を取り除く
+			// float l = lerp(0, 1, length(d) * 1.02 - 0.01) * _DistScale;
+			float l = length(d) * _DistScale;
+			// data.wが1の場合は物体の内部ということになるので、負の値をとるようにする。
+			l = l + (data.w * l * -2.);
 			return float4(l, l, l, 1);
+		}
+
+		// jump flooding用にエッジ検出を行う。
+		// 使用するのはw
+		float _EdgeThreshold;
+		float4 frag_edge(v2f i) : SV_Target
+		{
+			float4 t = tex2D(_MainTex, i.uv);
+
+			// 2パスに分けた方がよい。(分けられる？
+			float dx = 1.0 / _ScreenParams.x;
+			float dy = 1.0 / _ScreenParams.y;
+
+			float c00 = tex2D(_MainTex, i.uv + float2(-dx, -dy)).w;
+			float c01 = tex2D(_MainTex, i.uv + float2( .0, -dy)).w;
+			float c02 = tex2D(_MainTex, i.uv + float2( dx, -dy)).w;
+			float c10 = tex2D(_MainTex, i.uv + float2(-dx,  .0)).w;
+			float c12 = tex2D(_MainTex, i.uv + float2( dx,  .0)).w;
+			float c20 = tex2D(_MainTex, i.uv + float2(-dx,  dy)).w;
+			float c21 = tex2D(_MainTex, i.uv + float2( .0,  dy)).w;
+			float c22 = tex2D(_MainTex, i.uv + float2( dx,  dy)).w;
+			
+			float sx = (-1.0 * c00) + (-2.0 * c10) + (-1.0 * c20) + (1.0 * c02) + (2.0 * c12) + (1.0 * c22);
+			float sy = (-1.0 * c00) + (-2.0 * c01) + (-1.0 * c02) + (1.0 * c20) + (2.0 * c21) + (1.0 * c22);
+
+			float g = sqrt(sx * sx + sy * sy);
+			// t.z = g >= _EdgeThreshold ? 1. : 0.;
+			t.z = step(_EdgeThreshold, g);
+			return t;
 		}
 
 		ENDCG
 
+		// jump flooding用のパス
 		Pass
 		{
 			CGPROGRAM
@@ -164,11 +199,21 @@
 			ENDCG
 		}
 
+		// jump flooding後の距離計算用のパス
 		Pass
 		{
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment fragDist_2
+			ENDCG
+		}
+
+		// 前処理用のエッジ検出用のパス
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_edge
 			ENDCG
 		}
 	}

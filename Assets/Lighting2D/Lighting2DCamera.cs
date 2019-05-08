@@ -57,8 +57,9 @@ namespace Seiro.GPUSandbox.Lighting2D
             if (maxStep > 0)
             {
                 _writeIdx = 0;
-                Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], copyMat);
-                for (int i = 0; i < maxStep; ++i)
+				// Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], copyMat);
+				Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], jfaMat, 2);
+				for (int i = 0; i < maxStep; ++i)
                 {
 
 					// jfaMat.SetFloat("_JumpStep", 1 << (maxStep - (i + 1)));
@@ -80,6 +81,7 @@ namespace Seiro.GPUSandbox.Lighting2D
             }
             else if (display == Display.JfaSeed)
             {
+				// Graphics.Blit(_jfaSeed, _jfaSeed, jfaMat, 2);
 				copyMat.SetVector("_Scale", jfaCopyScale);
                 Graphics.Blit(_jfaSeed, destination, copyMat);
             }

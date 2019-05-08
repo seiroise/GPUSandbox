@@ -18,7 +18,7 @@
 
 		#define MAX_MARCHING_STEP 32
 		#define RAYS_PER_PIXEL 32
-		#define EPSILON 0.01
+		#define EPSILON 0.0001
 		#define PI 3.141593
 		#define HASHSCALE1 .1031
 
@@ -74,9 +74,10 @@
 				if (dist.x <= EPSILON)
 				{
 					// hitPos = samplePoint;
-					hitPos = origin + ray * (d + EPSILON);
+					hitPos = origin + ray * d;
 					return true;
 				}
+				
 			}
 			return false;
 		}
@@ -138,6 +139,8 @@
 				float emis = 0;
 				float count = 0;
 
+				float rand = hash12(i.uv);
+				rand = 0.;
 				float aspect = _ScreenParams.x / _ScreenParams.y;
 				float invAspect = 1 / aspect;
 
@@ -146,8 +149,8 @@
 					float2 hitPos = float2(0, 0);
 					float d = 0;
 
-					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2 * PI),
-										sin(i / RAYS_PER_PIXEL * 2 * PI));
+					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2 * PI + rand),
+										sin(i / RAYS_PER_PIXEL * 2 * PI + rand));
 
 					if(trace(origin, ray, hitPos, d))
 					{
@@ -164,8 +167,8 @@
 					}
 				}
 				float t = count / RAYS_PER_PIXEL;
-				color = float3(t, t, t);
-				// color *= (1.0 / RAYS_PER_PIXEL);
+				// color = float3(t, t, t);
+				color *= (1.0 / RAYS_PER_PIXEL);
 				// color *= 0.5;
 				return fixed4(pow(color, 1 / 2.2), 1);
 			}

@@ -56,7 +56,7 @@
 			o.col0 = c;
 			o.col1 = _Substance;
 			float2 seed = IN.vertex.xy / _ScreenParams.xy;
-			o.col2 = float4(seed, 1, 0);
+			o.col2 = float4(seed, 1, 1);
 			return o;
 		}
 
