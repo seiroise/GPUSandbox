@@ -30,5 +30,12 @@ namespace Seiro.GPUSandbox
             ping = pong;
             pong = temp;
         }
+
+		public static void Swap<T>(ref T ping, ref T pong)
+		{
+			T temp = ping;
+			ping = pong;
+			pong = temp;
+		}
     }
 }

@@ -37,8 +37,9 @@ namespace Seiro.GPUSandbox.Lighting2D
         private RenderTexture _jfaSeed;
 
         private int _writeIdx = 0;
-        private RenderTexture[] _jfaWorks;
+        private RenderTexture[] _jfaWorks;			// jfaの計算は書き込みと読込みに分けて行う必要があるので二つのバッファを確保する必要がある。
         private RenderTexture _distanceField;
+		private RenderTexture _prevLighting;		// lithingの計算には前回のフレームでの計算結果を利用するので、バッファが複数必要。
         private RenderTexture _lighting;
 
         private void OnEnable()
@@ -83,7 +84,7 @@ namespace Seiro.GPUSandbox.Lighting2D
             {
 				// Graphics.Blit(_jfaSeed, _jfaSeed, jfaMat, 2);
 				copyMat.SetVector("_Scale", jfaCopyScale);
-                Graphics.Blit(_jfaSeed, destination, copyMat);
+                Graphics.Blit(_jfaSeed, destination, jfaMat, 2);
             }
             else if (display == Display.JfaFill)
             {
@@ -98,13 +99,22 @@ namespace Seiro.GPUSandbox.Lighting2D
             }
             else if (display == Display.Lighting)
             {
+				// jfの結果からsdfを生成 
 				jfaMat.SetFloat("_DistScale", 1f);
 				Graphics.Blit(_jfaWorks[_writeIdx], _distanceField, jfaMat, 1);
-                lightingMat.SetTexture("_BaseColor", _baseColor);
+				
+				// リニア空間でライティングを行う 
+				lightingMat.SetTexture("_BaseColor", _baseColor);
                 lightingMat.SetTexture("_Substance", _substance);
                 lightingMat.SetTexture("_DistanceField", _distanceField);
-                Graphics.Blit(null, _lighting, lightingMat, 1);
-                Graphics.Blit(_lighting, destination, copyMat);
+				lightingMat.SetTexture("_PrevLighting", _prevLighting);
+                Graphics.Blit(null, _lighting, lightingMat, 0);
+
+				// sRGB空間に変換
+                Graphics.Blit(_lighting, destination, lightingMat, 1);
+
+				// ライティング用の作業テクスチャをスワップ。
+				UtilFunc.Swap(ref _lighting, ref _prevLighting);
             }
             else
             {
@@ -168,6 +178,9 @@ namespace Seiro.GPUSandbox.Lighting2D
 
             _lighting = RenderTexture.GetTemporary(descBaseColor);
             _lighting.name = "lighting";
+
+			_prevLighting = RenderTexture.GetTemporary(descBaseColor);
+			_prevLighting.name = "prev lighting";
         }
 
         private void ReleaseResources()
@@ -182,6 +195,7 @@ namespace Seiro.GPUSandbox.Lighting2D
             }
             UtilFunc.ReleaseRT(ref _distanceField);
             UtilFunc.ReleaseRT(ref _lighting);
+			UtilFunc.ReleaseRT(ref _prevLighting);
         }
 
         private void ConstructRTD(out RenderTextureDescriptor rtd)

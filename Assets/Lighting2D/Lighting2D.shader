@@ -2,9 +2,12 @@
 {
 	Properties
 	{
+		_MainTex ("Main", 2D) = "white" {}
 		_BaseColor ("Base color", 2D) = "white" {}
 		_Substance ("Substance", 2D) = "white" {}
 		_DistanceField ("Distance field", 2D) = "white" {}
+		_PrevLighting ("Prev Lighting", 2D) = "white" {}
+		_Noise("Noise", 2D) = "white" {}
 	}
 	SubShader
 	{
@@ -17,8 +20,8 @@
 		CGINCLUDE
 
 		#define MAX_MARCHING_STEP 32
-		#define RAYS_PER_PIXEL 32
-		#define EPSILON 0.0001
+		#define RAYS_PER_PIXEL 8
+		#define EPSILON 0.00001
 		#define PI 3.141593
 		#define HASHSCALE1 .1031
 
@@ -34,6 +37,7 @@
 			float4 vertex : SV_POSITION;
 		};
 
+		sampler2D _MainTex;
 		sampler2D _BaseColor;
 		float4 _BaseColor_TexelSize;
 		sampler2D _Substance;
@@ -53,6 +57,12 @@
 			return o;
 		}
 
+		fixed4 frag_srgb(v2f i) : SV_Target
+		{
+			fixed4 col = tex2D(_MainTex, i.uv);
+			return fixed4(pow(col.xyz, 1. / 2.2), 1.);
+		}
+
 		// 二次元ベクトルから対応するハッシュの生成
 		float hash12(float2 p)
 		{
@@ -69,12 +79,10 @@
 			{
 				float2 samplePoint = origin + ray * d;
 				float4 dist = tex2D(_DistanceField, samplePoint);
-				// float4 dist = tex2D(_DistanceField, samplePoint / _ScreenParams.xy);
 				d += dist.x;
 				if (dist.x <= EPSILON)
 				{
-					// hitPos = samplePoint;
-					hitPos = origin + ray * d;
+					hitPos = samplePoint;
 					return true;
 				}
 				
@@ -89,60 +97,28 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
-			
 			#include "UnityCG.cginc"
-			
-			fixed4 frag (v2f i) : SV_Target
-			{
-				fixed4 col = fixed4(0, 0, 0, 0);
-				float2 origin = i.uv;
-				// return tex2D(_BaseColor, i.uv);
 
-				float rand = hash12(i.uv);
-				rand = 0;
-
-				for (float i = 0; i < RAYS_PER_PIXEL; ++i)
-				{
-					float2 hitPos;
-					float d;
-
-					float2 ray = float2(
-						cos(i / RAYS_PER_PIXEL * 2 * PI + rand),
-						sin(i / RAYS_PER_PIXEL * 2 * PI + rand));
-					if (trace(origin, ray, hitPos, d))
-					{
-						fixed4 matColor = tex2D(_BaseColor, hitPos);
-						fixed r = 2;
-						fixed att = pow(max(1 - (d * d) / (r * r), 0), 2);
-						col += matColor * att;
-						// col += matColor;
-					}
-				}
-				col = col / RAYS_PER_PIXEL;
-				return col;
-			}
-			ENDCG
-		}
-
-		Pass
-		{
-			CGPROGRAM
-			#pragma vertex vert
-			#pragma fragment frag
-			#include "UnityCG.cginc"
+			sampler2D _PrevLighting;
+			sampler2D _Noise;
 
 			fixed4 frag (v2f i) : SV_Target
 			{
 				float2 origin = i.uv;
-				// float2 origin = i.uv * _ScreenParams.xy;
 				float3 color = float3(0, 0, 0);
 				float emis = 0;
 				float count = 0;
 
-				float rand = hash12(i.uv);
-				rand = 0.;
+				// ノイズマップから乱数を取得する。
+				float2 time = float2(_Time.y * 0.0012, _Time.y * -0.0012);
+				time = float2(0., 0.);
+				float rand = tex2D(_Noise, frac(i.uv + time) * 1).r;
+				// rand = 0;
 				float aspect = _ScreenParams.x / _ScreenParams.y;
 				float invAspect = 1 / aspect;
+
+				// 前回のレンダリング結果
+				float4 prevResult = tex2D(_PrevLighting, i.uv);
 
 				for(float i = 0; i < RAYS_PER_PIXEL; ++i)
 				{
@@ -162,17 +138,28 @@
 
 						emis += material.x * att;
 						color += material.x * baseColor * att;
-						// color += baseColor;
 						count++;
 					}
 				}
 				float t = count / RAYS_PER_PIXEL;
 				// color = float3(t, t, t);
 				color *= (1.0 / RAYS_PER_PIXEL);
-				// color *= 0.5;
-				return fixed4(pow(color, 1 / 2.2), 1);
+
+				// 前回の結果に対して何割かの確立で今回の結果をブレンドする。
+				float integ = 1. / 2.;
+				float3 result = (1. - integ) * prevResult.rgb + integ * color;
+				// return fixed4(pow(color, 1 / 2.2), emis);
+				return fixed4(result, 1);
 			}
 
+			ENDCG
+		}
+
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_srgb
 			ENDCG
 		}
 	}

@@ -154,8 +154,9 @@
 			// そのまま出力すると細かい誤差が残るので、下駄をはかせて誤差を取り除く
 			// float l = lerp(0, 1, length(d) * 1.02 - 0.01) * _DistScale;
 			float l = length(d) * _DistScale;
+			// l = floor(l * 256) / 256;
 			// data.wが1の場合は物体の内部ということになるので、負の値をとるようにする。
-			l = l + (data.w * l * -2.);
+			l = l + (data.w * l * -2.) + 0.001;
 			return float4(l, l, l, 1);
 		}
 
@@ -167,8 +168,8 @@
 			float4 t = tex2D(_MainTex, i.uv);
 
 			// 2パスに分けた方がよい。(分けられる？
-			float dx = 1.0 / _ScreenParams.x;
-			float dy = 1.0 / _ScreenParams.y;
+			float dx = (_ScreenParams.z - 1.);
+			float dy = (_ScreenParams.w - 1.);
 
 			float c00 = tex2D(_MainTex, i.uv + float2(-dx, -dy)).w;
 			float c01 = tex2D(_MainTex, i.uv + float2( .0, -dy)).w;
@@ -184,7 +185,9 @@
 
 			float g = sqrt(sx * sx + sy * sy);
 			// t.z = g >= _EdgeThreshold ? 1. : 0.;
-			t.z = step(_EdgeThreshold, g);
+			float edge = step(_EdgeThreshold, g);
+			t.xy = i.uv * edge;
+			t.z = edge;
 			return t;
 		}
 
