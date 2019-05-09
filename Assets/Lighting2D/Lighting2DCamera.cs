@@ -10,6 +10,10 @@ namespace Seiro.GPUSandbox.Lighting2D
         {
             BaseColor, Substance, JfaSeed, JfaFill, DistanceField, Lighting
         }
+		public enum DisplayLighting
+		{
+			Result, Emission
+		}
 
         public enum JFAResolution
         {
@@ -20,6 +24,7 @@ namespace Seiro.GPUSandbox.Lighting2D
             Div_16 = 4
         }
         public Display display = Display.BaseColor;
+		public DisplayLighting displayLighting = DisplayLighting.Emission;
 
         public JFAResolution jfaResolution = JFAResolution.Full;
         [Range(1, 12)]
@@ -31,6 +36,7 @@ namespace Seiro.GPUSandbox.Lighting2D
 
 		public Vector4 jfaCopyScale = Vector4.one;
 		public float dfCopyScale = 1f;
+		public float emisScale = 1f;
 
         private RenderTexture _baseColor;
         private RenderTexture _substance;
@@ -58,13 +64,9 @@ namespace Seiro.GPUSandbox.Lighting2D
             if (maxStep > 0)
             {
                 _writeIdx = 0;
-				// Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], copyMat);
 				Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], jfaMat, 2);
 				for (int i = 0; i < maxStep; ++i)
                 {
-
-					// jfaMat.SetFloat("_JumpStep", 1 << (maxStep - (i + 1)));
-					// jfaMat.SetFloat("_JumpStep", 1 / (1 << (maxStep - (i + 1))));
 					jfaMat.SetFloat("_JumpStep", Mathf.Pow(2, maxStep - (i + 1)));
 					_writeIdx = (i + 1) % 2;
                     Graphics.Blit(_jfaWorks[i % 2], _jfaWorks[_writeIdx], jfaMat, 0);
@@ -110,8 +112,17 @@ namespace Seiro.GPUSandbox.Lighting2D
 				lightingMat.SetTexture("_PrevLighting", _prevLighting);
                 Graphics.Blit(null, _lighting, lightingMat, 0);
 
-				// sRGB空間に変換
-                Graphics.Blit(_lighting, destination, lightingMat, 1);
+				if (displayLighting == DisplayLighting.Result)
+				{
+					// sRGB空間に変換
+					Graphics.Blit(_lighting, destination, lightingMat, 1);
+				}
+				else
+				{
+					// 輝度値に変換
+					lightingMat.SetFloat("_EmisScale", emisScale);
+					Graphics.Blit(_lighting, destination, lightingMat, 2);
+				}
 
 				// ライティング用の作業テクスチャをスワップ。
 				UtilFunc.Swap(ref _lighting, ref _prevLighting);
