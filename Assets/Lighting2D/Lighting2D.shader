@@ -8,6 +8,7 @@
 		_DistanceField ("Distance field", 2D) = "white" {}
 		_PrevLighting ("Prev Lighting", 2D) = "white" {}
 		_Noise("Noise", 2D) = "white" {}
+		_NoiseOffset("Noise Offset", Range(0, 10)) = 1
 	}
 	SubShader
 	{
@@ -20,7 +21,7 @@
 		CGINCLUDE
 
 		#define MAX_MARCHING_STEP 32
-		#define RAYS_PER_PIXEL 8
+		#define RAYS_PER_PIXEL 32
 		#define EPSILON 0.00001
 		#define PI 3.141593
 		#define HASHSCALE1 .1031
@@ -101,21 +102,38 @@
 
 			sampler2D _PrevLighting;
 			sampler2D _Noise;
+			float _NoiseOffset;
+
+			// 指定した座標の周辺の輝度値を取得する。
+			float getEmissionFromPrevLighting(float2 st)
+			{
+				float2 pix = _ScreenParams.wz - float2(1., 1.);
+			  float e = max(tex2D(_PrevLighting, (st) + pix * float2(-1,1)).w,0.);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(0,1)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(1,1)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(-1,0)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(0,0)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(1,0)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(-1,-1)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(0,-1)).w,0.),e);
+				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(1,-1)).w,0.),e);
+				return e;
+			}
 
 			fixed4 frag (v2f i) : SV_Target
 			{
 				float2 origin = i.uv;
 				float3 color = float3(0, 0, 0);
 				float emis = 0;
-				float count = 0;
+				// float count = 0;
 
 				// ノイズマップから乱数を取得する。
-				float2 time = float2(_Time.y * 0.0012, _Time.y * -0.0012);
-				time = float2(0., 0.);
-				float rand = tex2D(_Noise, frac(i.uv + time) * 1).r;
+				float2 time = frac(float2(_Time.y, _Time.y) * 0.98);
+				// time = float2(0., 0.);
+				float rand = tex2D(_Noise, frac(i.uv + time) * _NoiseOffset).r;
 				// rand = 0;
-				float aspect = _ScreenParams.x / _ScreenParams.y;
-				float invAspect = 1 / aspect;
+				// float aspect = _ScreenParams.x / _ScreenParams.y;
+				// float invAspect = 1 / aspect;
 
 				// 前回のレンダリング結果
 				float4 prevResult = tex2D(_PrevLighting, i.uv);
@@ -123,7 +141,7 @@
 				for(float i = 0; i < RAYS_PER_PIXEL; ++i)
 				{
 					float2 hitPos = float2(0, 0);
-					float d = 0;
+					float d = 0.;
 
 					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2 * PI + rand),
 										sin(i / RAYS_PER_PIXEL * 2 * PI + rand));
@@ -132,24 +150,37 @@
 					{
 						float3 baseColor 	= tex2D(_BaseColor, hitPos).xyz;
 						float4 material 	= tex2D(_Substance, hitPos);
+						float lastEmimssion = 0.;
+						if(material.x < 0.001)
+						{
+							lastEmimssion = getEmissionFromPrevLighting(hitPos);
+						}
+						if(d <= 0.01)
+						{
+							lastEmimssion = 0;
+						}
+						float r = 2.;
+						float att = pow(max(1.0 - (d * d) / (r * r), 0.), 2.);
 
-						float r = 2;
-						float att = pow(max(1.0 - (d * d) / (r * r), 0), 2);
+						// 前回の輝度値を考慮する。
+						float emission = material.x + lastEmimssion;
 
-						emis += material.x * att;
-						color += material.x * baseColor * att;
-						count++;
+						emis += emission * att;
+						color += emission * baseColor * att;
+						// count++;
 					}
 				}
-				float t = count / RAYS_PER_PIXEL;
+				// float t = count / RAYS_PER_PIXEL;
 				// color = float3(t, t, t);
+				emis *= (1.0 / RAYS_PER_PIXEL);
 				color *= (1.0 / RAYS_PER_PIXEL);
 
 				// 前回の結果に対して何割かの確立で今回の結果をブレンドする。
 				float integ = 1. / 2.;
 				float3 result = (1. - integ) * prevResult.rgb + integ * color;
 				// return fixed4(pow(color, 1 / 2.2), emis);
-				return fixed4(result, 1);
+				return fixed4(result, emis);
+				// return fixed4(result, 1);
 			}
 
 			ENDCG
