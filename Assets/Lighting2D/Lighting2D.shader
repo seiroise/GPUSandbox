@@ -119,21 +119,40 @@
 			float getEmissionFromPrevLighting(float2 st)
 			{
 				float2 pix = _ScreenParams.zw - float2(1., 1.);
-				pix = 1. / _ScreenParams.xy;
-				float e = max(tex2D(_PrevLighting, (st) + pix * float2(-1,1)).w,0.);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(0,1)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(1,1)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(-1,0)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(0,0)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(1,0)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(-1,-1)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(0,-1)).w,0.),e);
-				e = max(max(tex2D(_PrevLighting, (st) + pix * float2(1,-1)).w,0.),e);
-				return e;
+				float e = 0.;
+				e = max(	tex2D(_PrevLighting, st + pix * float2(-1, 1)).w, 0.);
+				// e = max(max(tex2D(_PrevLighting, st + pix * float2( 0, 1)).w, 0.), e);
+				e = max(max(tex2D(_PrevLighting, st + pix * float2( 1, 1)).w, 0.), e);
+				// e = max(max(tex2D(_PrevLighting, st + pix * float2(-1, 0)).w, 0.), e);
+				// e = max(max(tex2D(_PrevLighting, st + pix * float2( 1, 0)).w, 0.), e);
+				e = max(max(tex2D(_PrevLighting, st + pix * float2(-1,-1)).w, 0.), e);
+				// e = max(max(tex2D(_PrevLighting, st + pix * float2( 0,-1)).w, 0.), e);
+				e = max(max(tex2D(_PrevLighting, st + pix * float2( 1,-1)).w, 0.), e);
+				float l = length(pix);
+				return e * (1. - l * l);
 			}
 
 			fixed4 frag (v2f i) : SV_Target
-			{
+			{	
+				// マテリアルを確認
+				float4 material = tex2D(_Substance, i.uv);
+				if(material.x > 0.)
+				{
+					// 発光している場合はサンプリングが必要無くなるのでこのあとの処理はスルー可能
+					float3 baseColor = tex2D(_BaseColor, i.uv).xyz;
+					return fixed4(baseColor, material.x);
+				}
+				else if(material.y > 0.)
+				{
+					// 周囲の輝度をブレンドしてもとの色を描画してみる。
+					// ブレンド時の減衰に距離場の値も考慮するようにしてみる。
+					float dist = tex2D(_DistanceField, i.uv).x;
+					float emission = getEmissionFromPrevLighting(i.uv);
+					float3 baseColor = tex2D(_BaseColor, i.uv);
+					float3 result = baseColor * emission;
+					return fixed4(result, emission * (material.y + dist));
+				}
+				
 				float2 origin = i.uv;
 				float3 color = float3(0., 0., 0.);
 				float emis = 0.;
@@ -142,17 +161,17 @@
 				float2 time = frac(float2(_Time.y, _Time.y) * 0.98);
 				float rand = tex2D(_Noise, frac(i.uv + time) * _NoiseOffset).r;
 				// rand = 0.;
-
 				// 前回のレンダリング結果
 				float4 prevResult = tex2D(_PrevLighting, i.uv);
 
+				[loop]
 				for(float i = 0; i < RAYS_PER_PIXEL; ++i)
 				{
 					float2 hitPos = float2(0, 0);
 					float d = 0.;
 
-					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2 * PI + rand),
-										sin(i / RAYS_PER_PIXEL * 2 * PI + rand));
+					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand),
+										sin(i / RAYS_PER_PIXEL * 2. * PI + rand));
 
 					if(trace(origin, ray, hitPos, d))
 					{
@@ -162,7 +181,7 @@
 						if(material.x < EPSILON && d > EPSILON)
 						{
 							lastEmimssion = getEmissionFromPrevLighting(hitPos);
-							lastEmimssion *= step(0.005, lastEmimssion);
+							lastEmimssion *= step(0.01, lastEmimssion);
 						}
 						float r = 2.;
 						float att = pow(max(1.0 - (d * d) / (r * r), 0.), 2.);
@@ -180,7 +199,9 @@
 				// 前回の結果に対して何割かの確立で今回の結果をブレンドする。
 				float integ = 1. / 3.;
 				float3 result = (1. - integ) * prevResult.rgb + integ * color;
-				return fixed4(result, emis);
+				// 輝度値の低すぎる部分はカットする
+				return fixed4(result * step(0.01, emis), emis);
+				// return fixed4(result, emis);
 			}
 
 			ENDCG
