@@ -397,6 +397,7 @@ GameObject:
   - component: {fileID: 250364061}
   - component: {fileID: 250364060}
   - component: {fileID: 250364058}
+  - component: {fileID: 250364059}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -425,6 +426,13 @@ MonoBehaviour:
   jfaCopyScale: {x: 1, y: 1, z: 1, w: 1}
   dfCopyScale: 1
   emisScale: 1
+--- !u!81 &250364059
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 250364057}
+  m_Enabled: 1
 --- !u!20 &250364060
 Camera:
   m_ObjectHideFlags: 0

@@ -3,6 +3,7 @@
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
+		_Substance("Substance", 2D) = "white" {}
 		_JumpStep("Jump Step", float) = 0
 		_DistScale("Dist Scale", float) = 1
 		_EdgeThreshold("Edge Threshold", Range(0, 1)) = 0.5
@@ -191,6 +192,35 @@
 			return t;
 		}
 
+		// jump flooding用のエッジ検出をマテリアルの境を考慮して行う。
+		sampler2D _Substance;
+		float4 frag_edge_with_substance(v2f i) : SV_Target
+		{
+			float4 t = tex2D(_MainTex, i.uv);
+
+			// 2パスに分けた方がよい。(分けられる？
+			float dx = (_ScreenParams.z - 1.);
+			float dy = (_ScreenParams.w - 1.);
+
+			float4 c00 = tex2D(_Substance, i.uv + float2(-dx, -dy));
+			float4 c01 = tex2D(_Substance, i.uv + float2(.0, -dy));
+			float4 c02 = tex2D(_Substance, i.uv + float2(dx, -dy));
+			float4 c10 = tex2D(_Substance, i.uv + float2(-dx,  .0));
+			float4 c12 = tex2D(_Substance, i.uv + float2(dx,  .0));
+			float4 c20 = tex2D(_Substance, i.uv + float2(-dx,  dy));
+			float4 c21 = tex2D(_Substance, i.uv + float2(.0,  dy));
+			float4 c22 = tex2D(_Substance, i.uv + float2(dx,  dy));
+
+			float4 sx = (-1.0 * c00) + (-2.0 * c10) + (-1.0 * c20) + (1.0 * c02) + (2.0 * c12) + (1.0 * c22);
+			float4 sy = (-1.0 * c00) + (-2.0 * c01) + (-1.0 * c02) + (1.0 * c20) + (2.0 * c21) + (1.0 * c22);
+
+			float4 g = sqrt(sx * sx + sy * sy);
+			float edge = step(_EdgeThreshold, dot(g, g));
+			t.xy = i.uv * edge;
+			t.z = edge;
+			return t;
+		}
+
 		ENDCG
 
 		// jump flooding用のパス
@@ -217,6 +247,16 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_edge
+			ENDCG
+		}
+
+		// 前処理用のエッジ検出用のパス
+		// 上のパスとは異なり、それぞれの要素を考慮する。
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_edge_with_substance
 			ENDCG
 		}
 	}

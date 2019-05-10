@@ -14,6 +14,10 @@ namespace Seiro.GPUSandbox.Lighting2D
 		{
 			Result, Emission
 		}
+		public enum JFASeedEdge
+		{
+			Existance, Substance
+		}
 
         public enum JFAResolution
         {
@@ -23,7 +27,9 @@ namespace Seiro.GPUSandbox.Lighting2D
             Div_8 = 3,
             Div_16 = 4
         }
+
         public Display display = Display.BaseColor;
+		public JFASeedEdge jfaSeedEdge = JFASeedEdge.Existance;
 		public DisplayLighting displayLighting = DisplayLighting.Emission;
 
         public JFAResolution jfaResolution = JFAResolution.Full;
@@ -64,7 +70,18 @@ namespace Seiro.GPUSandbox.Lighting2D
             if (maxStep > 0)
             {
                 _writeIdx = 0;
-				Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], jfaMat, 2);
+				// seedに対して、エッジの抽出を行う。
+				if (jfaSeedEdge == JFASeedEdge.Existance)
+				{
+					Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], jfaMat, 2);
+				}
+				else
+				{
+					jfaMat.SetTexture("_Substance", _substance);
+					Graphics.Blit(_jfaSeed, _jfaWorks[_writeIdx], jfaMat, 3);
+				}
+
+				// jfaの反復処理
 				for (int i = 0; i < maxStep; ++i)
                 {
 					jfaMat.SetFloat("_JumpStep", Mathf.Pow(2, maxStep - (i + 1)));
@@ -84,9 +101,15 @@ namespace Seiro.GPUSandbox.Lighting2D
             }
             else if (display == Display.JfaSeed)
             {
-				// Graphics.Blit(_jfaSeed, _jfaSeed, jfaMat, 2);
 				copyMat.SetVector("_Scale", jfaCopyScale);
-                Graphics.Blit(_jfaSeed, destination, jfaMat, 2);
+				if (jfaSeedEdge == JFASeedEdge.Existance)
+				{
+					Graphics.Blit(_jfaSeed, destination, jfaMat, 2);
+				}
+				else
+				{
+					Graphics.Blit(_jfaSeed, destination, jfaMat, 3);
+				}
             }
             else if (display == Display.JfaFill)
             {
@@ -101,6 +124,7 @@ namespace Seiro.GPUSandbox.Lighting2D
             }
             else if (display == Display.Lighting)
             {
+
 				// jfの結果からsdfを生成 
 				jfaMat.SetFloat("_DistScale", 1f);
 				Graphics.Blit(_jfaWorks[_writeIdx], _distanceField, jfaMat, 1);

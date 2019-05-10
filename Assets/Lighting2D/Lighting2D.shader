@@ -45,7 +45,9 @@
 		float4 _BaseColor_TexelSize;
 		sampler2D _Substance;
 		sampler2D_float _DistanceField;
+		sampler2D _PrevLighting;
 		float _EmisScale;
+
 
 		v2f vert(appdata v)
 		{
@@ -74,11 +76,35 @@
 		}
 
 		// 二次元ベクトルから対応するハッシュの生成
-		float hash12(float2 p)
+		inline float hash12(float2 p)
 		{
 			float3 p3  = frac(float3(p.xyx) * HASHSCALE1);
 			p3 += dot(p3, p3.yzx + 19.19);
 			return frac((p3.x + p3.y) * p3.z);
+		}
+
+		// 指定した座標の勾配を取得する。
+		inline float2 getGradFromDistanceField(float2 st)
+		{
+			float2 pix = _ScreenParams.zw - float2(1., 1.);
+			float x0 = tex2D(_DistanceField, st + pix * float2(-1, 0)).x;
+			float x1 = tex2D(_DistanceField, st + pix * float2(1, 0)).x;
+			float y0 = tex2D(_DistanceField, st + pix * float2(0, -1)).x;
+			float y1 = tex2D(_DistanceField, st + pix * float2(0, 1)).x;
+			return float2(x1 - x0, y1 - y0);
+		}
+
+		// 指定した座標の周辺の輝度値を取得する。
+		inline float getEmissionFromPrevLighting(float2 st)
+		{
+			float2 pix = _ScreenParams.zw - float2(1., 1.);
+			float e = 0.;
+			e = max(tex2D(_PrevLighting, st + pix * float2(-1, 1)).w, 0.);
+			e = max(max(tex2D(_PrevLighting, st + pix * float2(1, 1)).w, 0.), e);
+			e = max(max(tex2D(_PrevLighting, st + pix * float2(-1, -1)).w, 0.), e);
+			e = max(max(tex2D(_PrevLighting, st + pix * float2(1, -1)).w, 0.), e);
+			float l = length(pix);	// 距離減衰
+			return e * (1. - l * l);
 		}
 		
 		// 距離場を利用してレイマーチングを行う。
@@ -111,26 +137,8 @@
 			#pragma fragment frag
 			#include "UnityCG.cginc"
 
-			sampler2D _PrevLighting;
 			sampler2D _Noise;
 			float _NoiseOffset;
-
-			// 指定した座標の周辺の輝度値を取得する。
-			float getEmissionFromPrevLighting(float2 st)
-			{
-				float2 pix = _ScreenParams.zw - float2(1., 1.);
-				float e = 0.;
-				e = max(	tex2D(_PrevLighting, st + pix * float2(-1, 1)).w, 0.);
-				// e = max(max(tex2D(_PrevLighting, st + pix * float2( 0, 1)).w, 0.), e);
-				e = max(max(tex2D(_PrevLighting, st + pix * float2( 1, 1)).w, 0.), e);
-				// e = max(max(tex2D(_PrevLighting, st + pix * float2(-1, 0)).w, 0.), e);
-				// e = max(max(tex2D(_PrevLighting, st + pix * float2( 1, 0)).w, 0.), e);
-				e = max(max(tex2D(_PrevLighting, st + pix * float2(-1,-1)).w, 0.), e);
-				// e = max(max(tex2D(_PrevLighting, st + pix * float2( 0,-1)).w, 0.), e);
-				e = max(max(tex2D(_PrevLighting, st + pix * float2( 1,-1)).w, 0.), e);
-				float l = length(pix);
-				return e * (1. - l * l);
-			}
 
 			fixed4 frag (v2f i) : SV_Target
 			{	
@@ -138,14 +146,32 @@
 				float4 material = tex2D(_Substance, i.uv);
 				if(material.x > 0.)
 				{
-					// 発光している場合はサンプリングが必要無くなるのでこのあとの処理はスルー可能
+					// 発光している場合はサンプリングが必要無くなるのでこのあとの処理はスキップ可能
 					float3 baseColor = tex2D(_BaseColor, i.uv).xyz;
 					return fixed4(baseColor, material.x);
 				}
 				else if(material.y > 0.)
 				{
-					// 周囲の輝度をブレンドしてもとの色を描画してみる。
-					// ブレンド時の減衰に距離場の値も考慮するようにしてみる。
+					/*
+					// 現在位置の勾配方向に距離場の絶対値の方向に進んだ位置で輝度をサンプリングし
+					// 距離による減衰を考慮する。
+					// しかしこの方法の場合、勾配が0になる地点でうまく計算が行えなくなる。これはかなり致命的。
+					float d = -tex2D(_DistanceField, i.uv).x;	// 物体内にいるので距離場の値は負になっていることに気をつける。
+					float2 grad = getGradFromDistanceField(i.uv);
+					grad = grad / length(grad);
+					float emission = getEmissionFromPrevLighting(i.uv + grad * d);
+					float3 baseColor = tex2D(_BaseColor, i.uv);
+
+					float r = material.y;
+					float att = pow(max(1.0 - (d * d) / (r * r), 0.), 2.);
+
+					emission *= att;
+					float3 result = baseColor * emission;
+					// return fixed4(grad * material.y, 0., 1.);
+					return fixed4(result, emission * (material.y + d));
+					// return fixed4(result, 0.);
+					*/
+
 					float dist = tex2D(_DistanceField, i.uv).x;
 					float emission = getEmissionFromPrevLighting(i.uv);
 					float3 baseColor = tex2D(_BaseColor, i.uv);
@@ -201,7 +227,6 @@
 				float3 result = (1. - integ) * prevResult.rgb + integ * color;
 				// 輝度値の低すぎる部分はカットする
 				return fixed4(result * step(0.01, emis), emis);
-				// return fixed4(result, emis);
 			}
 
 			ENDCG
