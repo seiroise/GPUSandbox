@@ -18,6 +18,12 @@
 		CGINCLUDE
 
 		#include "UnityCG.cginc"
+		#include "Assets/CGInc/ShaderUtils.cginc"
+
+		sampler2D_float _MainTex;	// 取得する対象のデータ
+		float4 _MainTex_TexelSize;
+		float _JumpStep;	// 今回のJFAのステップ幅
+		float _DistScale;	// 距離描画時のスケール
 
 		struct appdata
 		{
@@ -30,11 +36,6 @@
 			float2 uv : TEXCOORD0;
 			float4 vertex : SV_POSITION;
 		};
-
-		sampler2D_float _MainTex;	// 取得する対象のデータ
-		float4 _MainTex_TexelSize;
-		float _JumpStep;	// 今回のJFAのステップ幅
-		float _DistScale;	// 距離描画時のスケール
 
 		v2f vert(appdata v)
 		{
@@ -201,21 +202,23 @@
 			// 2パスに分けた方がよい。(分けられる？
 			float dx = (_ScreenParams.z - 1.);
 			float dy = (_ScreenParams.w - 1.);
-
+			
 			float4 c00 = tex2D(_Substance, i.uv + float2(-dx, -dy));
-			float4 c01 = tex2D(_Substance, i.uv + float2(.0, -dy));
-			float4 c02 = tex2D(_Substance, i.uv + float2(dx, -dy));
+			float4 c01 = tex2D(_Substance, i.uv + float2( .0, -dy));
+			float4 c02 = tex2D(_Substance, i.uv + float2( dx, -dy));
+
 			float4 c10 = tex2D(_Substance, i.uv + float2(-dx,  .0));
-			float4 c12 = tex2D(_Substance, i.uv + float2(dx,  .0));
+			float4 c12 = tex2D(_Substance, i.uv + float2( dx,  .0));
+			
 			float4 c20 = tex2D(_Substance, i.uv + float2(-dx,  dy));
-			float4 c21 = tex2D(_Substance, i.uv + float2(.0,  dy));
-			float4 c22 = tex2D(_Substance, i.uv + float2(dx,  dy));
+			float4 c21 = tex2D(_Substance, i.uv + float2( .0,  dy));
+			float4 c22 = tex2D(_Substance, i.uv + float2( dx,  dy));
 
 			float4 sx = (-1.0 * c00) + (-2.0 * c10) + (-1.0 * c20) + (1.0 * c02) + (2.0 * c12) + (1.0 * c22);
 			float4 sy = (-1.0 * c00) + (-2.0 * c01) + (-1.0 * c02) + (1.0 * c20) + (2.0 * c21) + (1.0 * c22);
 
 			float4 g = sqrt(sx * sx + sy * sy);
-			float edge = step(_EdgeThreshold, dot(g, g));
+			float edge = step(_EdgeThreshold, max4(g));
 			t.xy = i.uv * edge;
 			t.z = edge;
 			return t;
