@@ -7,9 +7,10 @@
 		_Substance ("Substance", 2D) = "white" {}
 		_DistanceField ("Distance field", 2D) = "white" {}
 		_PrevLighting ("Prev Lighting", 2D) = "white" {}
-		_Noise("Noise", 2D) = "white" {}
-		_NoiseOffset("Noise Offset", Range(0, 10)) = 1
-		_EmisScale("Emis Scale", float) = 1
+		_Noise ("Noise", 2D) = "white" {}
+		_NoiseOffset ("Noise Offset", Range(0, 10)) = 1
+		_NoiseTimeScale ("Noise Time Scale", Range(0, 10)) = 0.98
+		_EmisScale ("Emis Scale", float) = 1
 	}
 	SubShader
 	{
@@ -22,7 +23,7 @@
 		CGINCLUDE
 
 		#define MAX_MARCHING_STEP 32
-		#define RAYS_PER_PIXEL 32
+		#define RAYS_PER_PIXEL 4
 		
 		#define DISTANCE_EPSILON 1e-4
 		#define EMISSION_EPSILON 1e-2
@@ -50,7 +51,6 @@
 		sampler2D_float _DistanceField;
 		sampler2D _PrevLighting;
 		float _EmisScale;
-
 
 		v2f vert(appdata v)
 		{
@@ -144,6 +144,7 @@
 
 			sampler2D _Noise;
 			float _NoiseOffset;
+			float _NoiseTimeScale;
 
 			fixed4 frag (v2f i) : SV_Target
 			{	
@@ -201,7 +202,7 @@
 				float minDist = 1e+3;
 
 				// ノイズマップから乱数を取得する。
-				float2 time = frac(float2(_Time.y, _Time.y) * 0.98);
+				float2 time = frac(float2(_Time.y, _Time.y) * _NoiseTimeScale);
 				float rand = tex2D(_Noise, frac(i.uv + time) * _NoiseOffset).r;
 				// rand = 0.;
 
@@ -227,7 +228,7 @@
 							lastEmimssion = getEmissionFromPrevLighting(hitPos);
 							lastEmimssion *= step(EMISSION_EPSILON, lastEmimssion);	// 低すぎる輝度は除外
 						}
-						float r = 2.;
+						float r = 0.9;
 						float att = pow(max(1.0 - (d * d) / (r * r), 0.), 2.);
 
 						// 前回の輝度値を考慮する。
