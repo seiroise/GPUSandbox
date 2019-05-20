@@ -2,8 +2,8 @@
 {
 	Properties
 	{
-		_MainTex("Texture", 2D) = "white" {}
-		_Substance("Substance", 2D) = "white" {}
+		[PreRendererData] _MainTex("Texture", 2D) = "white" {}
+		[PreRendererData] _Substance("Substance", 2D) = "white" {}
 		_JumpStep("Jump Step", float) = 0
 		_DistScale("Dist Scale", float) = 1
 		_EdgeThreshold("Edge Threshold", Range(0, 1)) = 0.5

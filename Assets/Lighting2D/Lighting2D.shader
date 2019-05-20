@@ -2,15 +2,18 @@
 {
 	Properties
 	{
-		_MainTex ("Main", 2D) = "white" {}
-		_BaseColor ("Base color", 2D) = "white" {}
-		_Substance ("Substance", 2D) = "white" {}
-		_DistanceField ("Distance field", 2D) = "white" {}
-		_PrevLighting ("Prev Lighting", 2D) = "white" {}
+		[PreRendererData] _MainTex ("Main", 2D) = "white" {}
+		[PreRendererData] _BaseColor ("Base color", 2D) = "white" {}
+		[PreRendererData] _Substance ("Substance", 2D) = "white" {}
+		[PreRendererData] _DistanceField ("Distance field", 2D) = "white" {}
+		[PreRendererData] _PrevLighting ("Prev Lighting", 2D) = "white" {}
 		_Noise ("Noise", 2D) = "white" {}
 		_NoiseOffset ("Noise Offset", Range(0, 10)) = 1
 		_NoiseTimeScale ("Noise Time Scale", Range(0, 10)) = 0.98
 		_EmisScale ("Emis Scale", float) = 1
+		_SamplingOffset ("Sampling Offset", Vector) = (0, 0, 0, 0)
+		[Toggle(AMBIENT_LIGHTING)]_EnableAmbientLighting ("Enable Ambient Lighting", Float) = 0
+		_AmbientColor ("Ambient Color", Color) = (1, 1, 1, 1)
 	}
 	SubShader
 	{
@@ -22,8 +25,10 @@
 
 		CGINCLUDE
 
-		#define MAX_MARCHING_STEP 32
-		#define RAYS_PER_PIXEL 4
+		#pragma multi_compile _ AMBIENT_LIGHTING_ON
+
+		#define MAX_MARCHING_STEP 64
+		#define RAYS_PER_PIXEL 32
 		
 		#define DISTANCE_EPSILON 1e-4
 		#define EMISSION_EPSILON 1e-2
@@ -44,44 +49,18 @@
 			float4 vertex : SV_POSITION;
 		};
 
-		sampler2D _MainTex;
+		sampler2D_float _MainTex;
 		sampler2D _BaseColor;
 		float4 _BaseColor_TexelSize;
 		sampler2D _Substance;
 		sampler2D_float _DistanceField;
-		sampler2D _PrevLighting;
+		sampler2D_float _PrevLighting;
 		float _EmisScale;
-
-		v2f vert(appdata v)
-		{
-			v2f o;
-			o.vertex = UnityObjectToClipPos(v.vertex);
-			o.uv = v.uv;
-#if UNITY_UV_STARTS_AT_TOP
-			if (_BaseColor_TexelSize.y > 0)
-			{
-				o.uv.y = 1 - v.uv.y;
-			}
-#endif
-			return o;
-		}
-
-		fixed4 frag_srgb(v2f i) : SV_Target
-		{
-			fixed4 col = tex2D(_MainTex, i.uv);
-			return fixed4(pow(col.rgb, 1. / 2.2), 1.);
-		}
-
-		fixed4 frag_emis(v2f i) : SV_Target
-		{
-			fixed e = tex2D(_MainTex, i.uv).a * _EmisScale;
-			return fixed4(e, e, e, 1.);
-		}
 
 		// 二次元ベクトルから対応するハッシュの生成
 		inline float hash12(float2 p)
 		{
-			float3 p3  = frac(float3(p.xyx) * HASHSCALE1);
+			float3 p3 = frac(float3(p.xyx) * HASHSCALE1);
 			p3 += dot(p3, p3.yzx + 19.19);
 			return frac((p3.x + p3.y) * p3.z);
 		}
@@ -110,23 +89,90 @@
 			return e; // * (1. - l * l);
 		}
 
+		inline float3 Linear2sRGB(float3 color)
+		{
+			float3 x = color * 12.92f;
+			float3 y = 1.055f * pow(clamp(color, 0.f, 1.f), 0.4166667f) - 0.055f;
+			float3 clr = color;
+			clr.r = (color.r < 0.0031308f) ? x.r : y.r;
+			clr.g = (color.g < 0.0031308f) ? x.g : y.g;
+			clr.b = (color.b < 0.0031308f) ? x.b : y.b;
+			return clr;
+		}
+
+		v2f vert(appdata v)
+		{
+			v2f o;
+			o.vertex = UnityObjectToClipPos(v.vertex);
+			o.uv = v.uv;
+#ifdef UNITY_UV_STARTS_AT_TOP
+			if (_BaseColor_TexelSize.y > 0)
+			{
+				o.uv.y = 1 - v.uv.y;
+			}
+#endif
+			return o;
+		}
+
+		// srgbに変換しつつLDRにも変換
+		fixed4 frag_srgb(v2f i) : SV_Target
+		{
+			float4 col = tex2D(_MainTex, i.uv);
+			// col.rgb = pow(col.rgb, .2 / col.a);
+			col.rgb = Linear2sRGB(col.rgb);
+			// col.rgb = pow(col.rgb, 1.f / 2.2f);
+			return fixed4(col.rgb, 1.f);
+		}
+
+		// 輝度値にスケールを掛けて表示
+		fixed4 frag_emis(v2f i) : SV_Target
+		{
+			fixed e = tex2D(_MainTex, i.uv).a * _EmisScale;
+			return fixed4(e, e, e, 1.);
+		}
+
+		// 輝度値をもとに平滑化を行う。当然ぼやける。
+		fixed4 frag_avg(v2f i) : SV_Target
+		{
+			float2 pix = _ScreenParams.zw - float2(1.f, 1.f);
+			float4 x0 = tex2D(_MainTex, i.uv + pix * float2(-1., 0.));
+			float4 x1 = tex2D(_MainTex, i.uv + pix * float2( 1., 0.));
+			float4 y0 = tex2D(_MainTex, i.uv + pix * float2( 0.,-1.));
+			float4 y1 = tex2D(_MainTex, i.uv + pix * float2( 0., 1.));
+
+			float totalEmis = x0.a + x1.a + y0.a + y1.a;
+			float3 avg = ((x0.rgb * x0.a) + (x1.rgb * x1.a) + (y0.rgb * y0.a) + (y1.rgb * y1.a)) / totalEmis;
+			
+			float4 c = tex2D(_MainTex, i.uv);
+			return fixed4(avg, c.a);
+		}
+
 		// 距離場を利用してレイマーチングを行う。
 		bool trace(float2 origin, float2 ray, out float2 hitPos, out float d)
 		{
 			d = 0;
+			float2 st = origin;
+			[unroll]
 			for (int i = 0; i < MAX_MARCHING_STEP; ++i)
 			{
-				float2 samplePoint = origin + ray * d;
-				float4 dist = abs(tex2D(_DistanceField, samplePoint));
+				st = origin + ray * d;
+				float4 dist = abs(tex2D(_DistanceField, st));
 				d += dist.x;
+				
 				if (dist.x <= DISTANCE_EPSILON)
 				{
 					hitPos = origin + ray * (d + DISTANCE_EPSILON);
-					// hitPos = samplePoint;
 					return true;
 				}
-
 			}
+
+#ifdef AMBIENT_LIGHTING_ON
+			if (st.x < 0.f || 1.f < st.x || st.y < 0.f || 1.f < st.y)
+			{
+				hitPos = origin + ray * (d + DISTANCE_EPSILON);
+				return true;
+			}
+#endif
 			return false;
 		}
 
@@ -140,62 +186,32 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
+			#pragma multi_compile _ AMBIENT_LIGHTING_ON
 			#include "UnityCG.cginc"
 
 			sampler2D _Noise;
 			float _NoiseOffset;
 			float _NoiseTimeScale;
+			float4 _SamplingOffset;
+			float4 _AmbientColor;
 
-			fixed4 frag (v2f i) : SV_Target
+			float4 frag (v2f i) : SV_Target
 			{	
+				float2 samplePoint = i.uv + _SamplingOffset.xy;
+
 				// マテリアルを確認
-				float4 material = tex2D(_Substance, i.uv);
-				float4 baseColor = tex2D(_BaseColor, i.uv);
-				
+				float4 material = tex2D(_Substance, samplePoint);
+				float4 baseColor = tex2D(_BaseColor, samplePoint);
+
 				// 輝度を外部に放射しているような物体
 				if(material.x > 0.)
 				{
 					// 発光している場合はサンプリングが必要無くなるのでこのあとの処理はスキップ可能
-					float3 baseColor = tex2D(_BaseColor, i.uv).xyz;
+					float3 baseColor = tex2D(_BaseColor, samplePoint).xyz;
 					return fixed4(baseColor, material.x);
 				}
 
-#if false
-				if(material.y > 0.)
-				{
-					/*
-					// 現在位置の勾配方向に距離場の絶対値の方向に進んだ位置で輝度をサンプリングし
-					// 距離による減衰を考慮する。
-					// しかしこの方法の場合、勾配が0になる地点でうまく計算が行えなくなる。これはかなり致命的。
-					// なので物体内であっても、トレースして輝度を集めるようにした方がいい。
-					// 物体内部と、外部での主な違いは、自分のもともと保持している色に輝度を考慮した加算を行うかどうかということ。
-					float d = -tex2D(_DistanceField, i.uv).x;	// 物体内にいるので距離場の値は負になっていることに気をつける。
-					float2 grad = getGradFromDistanceField(i.uv);
-					grad = grad / length(grad);
-					float emission = getEmissionFromPrevLighting(i.uv + grad * d);
-					float3 baseColor = tex2D(_BaseColor, i.uv);
-
-					float r = material.y;
-					float att = pow(max(1.0 - (d * d) / (r * r), 0.), 2.);
-
-					emission *= att;
-					float3 result = baseColor * emission;
-					// return fixed4(grad * material.y, 0., 1.);
-					return fixed4(result, emission * (material.y + d));
-					// return fixed4(result, 0.);
-					*/
-
-					/*
-					float dist = tex2D(_DistanceField, i.uv).x;
-					float emission = getEmissionFromPrevLighting(i.uv);
-					float3 baseColor = tex2D(_BaseColor, i.uv);
-					float3 result = baseColor * emission;
-					return fixed4(result, emission * (material.y + dist));
-					*/
-				}
-#endif
-
-				float2 origin = i.uv;
+				float2 origin = samplePoint;
 				float3 color = float3(0., 0., 0.);
 				float emis = 0.;
 				float dist = 0.;
@@ -203,11 +219,11 @@
 
 				// ノイズマップから乱数を取得する。
 				float2 time = frac(float2(_Time.y, _Time.y) * _NoiseTimeScale);
-				float rand = tex2D(_Noise, frac(i.uv + time) * _NoiseOffset).r;
+				float rand = tex2D(_Noise, frac(samplePoint + time) * _NoiseOffset).r;
 				// rand = 0.;
 
 				// 前回のレンダリング結果
-				float4 prevResult  = tex2D(_PrevLighting, i.uv);
+				float4 prevResult  = tex2D(_PrevLighting, samplePoint);
 
 				[loop]
 				for(float i = 0; i < RAYS_PER_PIXEL; ++i)
@@ -220,16 +236,25 @@
 
 					if(trace(origin, ray, hitPos, d))
 					{
-						float3 baseColor 	= tex2D(_BaseColor, hitPos).xyz;
-						float4 material 	= tex2D(_Substance, hitPos);
+						float3 baseColor = tex2D(_BaseColor, hitPos).xyz;
+						float4 material = tex2D(_Substance, hitPos);
 						float lastEmimssion = 0.;
+
+#if AMBIENT_LIGHTING_ON
+						if (hitPos.x < 0. || 1. < hitPos.x || hitPos.y < 0. || 1. < hitPos.y)
+						{
+							baseColor = _AmbientColor.xyz;
+							material = float4(1., 0., 0., 0.);
+							lastEmimssion = 1.;
+						}
+#endif
 						if(material.x < EPSILON && d > EPSILON)
 						{
 							lastEmimssion = getEmissionFromPrevLighting(hitPos);
 							lastEmimssion *= step(EMISSION_EPSILON, lastEmimssion);	// 低すぎる輝度は除外
 						}
-						float r = 0.9;
-						float att = pow(max(1.0 - (d * d) / (r * r), 0.), 2.);
+						float r = 2.;
+						float att = pow(max(1. - (d * d) / (r * r), 0.), 2.);
 
 						// 前回の輝度値を考慮する。
 						float emission = material.x + lastEmimssion;
@@ -248,19 +273,18 @@
 				if(material.y > 0.)
 				{
 					// 表面化散乱する物体
-
-					// float3 result = baseColor.rgb * (emis / (dist * dist));
 					float t = emis * material.y;// * (1. - minDist) + material.y;
 					float3 result = float3(t, t, t);
 					result = baseColor.rgb * t;
-					return fixed4(result, t);
+					result = float3(amb, amb, amb);
+					return float4(result, t);
 				}
 				else
 				{
 					// それ以外の物体
-					float integ = 1. / 2.;
+					float integ = 1. / 3.;
 					float3 result = (1. - integ) * prevResult.rgb + integ * color;
-					return fixed4(result * step(EMISSION_EPSILON, emis), emis);	// 輝度が低すぎる場合は除外
+					return float4(result * step(EMISSION_EPSILON, emis), emis);	// 輝度が低すぎる場合は除外
 				}
 			}
 
@@ -282,6 +306,15 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_emis
+			ENDCG
+		}
+
+		// 平均値フィルタ
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_avg
 			ENDCG
 		}
 	}

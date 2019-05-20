@@ -36,9 +36,21 @@ namespace Seiro.GPUSandbox.Lighting2D
         [Range(1, 12)]
         public int maxStep = 10;
 
+		[Space]
+
         public Material jfaMat;
         public Material lightingMat;
         public Material copyMat;
+
+		[Space]
+
+		public bool useTemporalFilterling = true;
+		public Vector2 samplingOffset;
+		public bool useAvgFilter = true;
+		public bool useAmbientColor = false;
+		public Color ambientColor = Color.white;
+
+		[Space]
 
 		public Vector4 jfaCopyScale = Vector4.one;
 		public float dfCopyScale = 1f;
@@ -53,6 +65,14 @@ namespace Seiro.GPUSandbox.Lighting2D
         private RenderTexture _distanceField;
 		private RenderTexture _prevLighting;		// lithingの計算には前回のフレームでの計算結果を利用するので、バッファが複数必要。
         private RenderTexture _lighting;
+
+		private int _renderingCount = 0;            // テンポラルフィルタリングのためのレンダリングかうんた
+		private Vector2[] _temporalFilteringOffsets = {
+			new Vector2( 1f, 0f),
+			new Vector2( 0f, 0f),
+			new Vector2( 0f, 0f),
+			new Vector2( 0f, 0f)
+		};
 
         private void OnEnable()
         {
@@ -134,7 +154,24 @@ namespace Seiro.GPUSandbox.Lighting2D
                 lightingMat.SetTexture("_Substance", _substance);
                 lightingMat.SetTexture("_DistanceField", _distanceField);
 				lightingMat.SetTexture("_PrevLighting", _prevLighting);
+				if (useTemporalFilterling)
+				{
+					Vector2 offset = _temporalFilteringOffsets[_renderingCount & 3] * samplingOffset;
+					lightingMat.SetVector("_SamplingOffset", offset);
+					_renderingCount++;
+				}
+				else
+				{
+					lightingMat.SetVector("_SamplingOffset", Vector2.zero);
+				}
                 Graphics.Blit(null, _lighting, lightingMat, 0);
+
+				// 輝度値を用いた平均値フィルタをかける
+				if (useAvgFilter)
+				{
+					UtilFunc.Swap(ref _lighting, ref _prevLighting);
+					Graphics.Blit(_prevLighting, _lighting, lightingMat, 3);
+				}
 
 				if (displayLighting == DisplayLighting.Result)
 				{
@@ -166,6 +203,11 @@ namespace Seiro.GPUSandbox.Lighting2D
             descBaseColor.colorFormat = RenderTextureFormat.ARGB32;
             descBaseColor.depthBufferBits = 24;
 
+			RenderTextureDescriptor descLighting;
+			ConstructRTD(out descLighting);
+			descLighting.colorFormat = RenderTextureFormat.ARGBFloat;
+			descLighting.depthBufferBits = 0;
+
             RenderTextureDescriptor descJfa;
             ConstructRTD(out descJfa);
             descJfa.colorFormat = RenderTextureFormat.ARGB32;
@@ -173,7 +215,6 @@ namespace Seiro.GPUSandbox.Lighting2D
 
             RenderTextureDescriptor descJfaWork;
             ConstructRTD(out descJfaWork);
-            // descJfaWork.colorFormat = RenderTextureFormat.ARGB32;
             descJfaWork.colorFormat = RenderTextureFormat.ARGBFloat;
             descJfaWork.depthBufferBits = 0;
             descJfaWork.width /= (1 << (int)jfaResolution);
@@ -182,7 +223,6 @@ namespace Seiro.GPUSandbox.Lighting2D
             RenderTextureDescriptor descDistField;
             ConstructRTD(out descDistField);
             descDistField.colorFormat = RenderTextureFormat.ARGBFloat;
-            // descDistField.colorFormat = RenderTextureFormat.ARGB32;
             descDistField.depthBufferBits = 0;
             descDistField.width = descJfaWork.width;
             descDistField.height = descJfaWork.height;
@@ -195,26 +235,21 @@ namespace Seiro.GPUSandbox.Lighting2D
 
             _jfaSeed = RenderTexture.GetTemporary(descJfa);
             _jfaSeed.name = "jfa seed";
-            // _jfaSeed.filterMode = FilterMode.Point;
 
             _jfaWorks = new RenderTexture[2];
             _jfaWorks[0] = RenderTexture.GetTemporary(descJfaWork);
             _jfaWorks[0].name = "jfa work 0";
-            // _jfaWorks[0].filterMode = FilterMode.Point;
-            // _jfaWorks[0].wrapMode = TextureWrapMode.Clamp;
 
             _jfaWorks[1] = RenderTexture.GetTemporary(descJfaWork);
             _jfaWorks[1].name = "jfa work 1";
-            // _jfaWorks[1].filterMode = FilterMode.Point;
-            // _jfaWorks[1].wrapMode = TextureWrapMode.Clamp;
 
             _distanceField = RenderTexture.GetTemporary(descDistField);
             _distanceField.name = "distance field";
 
-            _lighting = RenderTexture.GetTemporary(descBaseColor);
+            _lighting = RenderTexture.GetTemporary(descLighting);
             _lighting.name = "lighting";
 
-			_prevLighting = RenderTexture.GetTemporary(descBaseColor);
+			_prevLighting = RenderTexture.GetTemporary(descLighting);
 			_prevLighting.name = "prev lighting";
         }
 
