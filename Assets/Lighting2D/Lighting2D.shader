@@ -12,8 +12,6 @@
 		_NoiseTimeScale ("Noise Time Scale", Range(0, 10)) = 0.98
 		_EmisScale ("Emis Scale", float) = 1
 		_SamplingOffset ("Sampling Offset", Vector) = (0, 0, 0, 0)
-		[Toggle(AMBIENT_LIGHTING)]_EnableAmbientLighting ("Enable Ambient Lighting", Float) = 0
-		_AmbientColor ("Ambient Color", Color) = (1, 1, 1, 1)
 	}
 	SubShader
 	{
@@ -25,10 +23,8 @@
 
 		CGINCLUDE
 
-		#pragma multi_compile _ AMBIENT_LIGHTING_ON
-
-		#define MAX_MARCHING_STEP 64
-		#define RAYS_PER_PIXEL 32
+		#define MAX_MARCHING_STEP 16
+		#define RAYS_PER_PIXEL 8
 		
 		#define DISTANCE_EPSILON 1e-4
 		#define EMISSION_EPSILON 1e-2
@@ -165,14 +161,6 @@
 					return true;
 				}
 			}
-
-#ifdef AMBIENT_LIGHTING_ON
-			if (st.x < 0.f || 1.f < st.x || st.y < 0.f || 1.f < st.y)
-			{
-				hitPos = origin + ray * (d + DISTANCE_EPSILON);
-				return true;
-			}
-#endif
 			return false;
 		}
 
@@ -186,14 +174,12 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
-			#pragma multi_compile _ AMBIENT_LIGHTING_ON
 			#include "UnityCG.cginc"
 
 			sampler2D _Noise;
 			float _NoiseOffset;
 			float _NoiseTimeScale;
 			float4 _SamplingOffset;
-			float4 _AmbientColor;
 
 			float4 frag (v2f i) : SV_Target
 			{	
@@ -240,14 +226,6 @@
 						float4 material = tex2D(_Substance, hitPos);
 						float lastEmimssion = 0.;
 
-#if AMBIENT_LIGHTING_ON
-						if (hitPos.x < 0. || 1. < hitPos.x || hitPos.y < 0. || 1. < hitPos.y)
-						{
-							baseColor = _AmbientColor.xyz;
-							material = float4(1., 0., 0., 0.);
-							lastEmimssion = 1.;
-						}
-#endif
 						if(material.x < EPSILON && d > EPSILON)
 						{
 							lastEmimssion = getEmissionFromPrevLighting(hitPos);
@@ -276,7 +254,6 @@
 					float t = emis * material.y;// * (1. - minDist) + material.y;
 					float3 result = float3(t, t, t);
 					result = baseColor.rgb * t;
-					result = float3(amb, amb, amb);
 					return float4(result, t);
 				}
 				else
