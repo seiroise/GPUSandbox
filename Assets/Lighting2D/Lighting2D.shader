@@ -101,12 +101,12 @@
 			v2f o;
 			o.vertex = UnityObjectToClipPos(v.vertex);
 			o.uv = v.uv;
-#ifdef UNITY_UV_STARTS_AT_TOP
-			if (_BaseColor_TexelSize.y > 0)
-			{
-				o.uv.y = 1 - v.uv.y;
-			}
-#endif
+			#ifdef UNITY_UV_STARTS_AT_TOP
+				if (_BaseColor_TexelSize.y > 0)
+				{
+					o.uv.y = 1 - v.uv.y;
+				}
+			#endif
 			return o;
 		}
 
@@ -217,8 +217,8 @@
 					float2 hitPos = float2(0, 0);
 					float d = 0.;
 
-					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand),
-										sin(i / RAYS_PER_PIXEL * 2. * PI + rand));
+					// float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand), sin(i / RAYS_PER_PIXEL * 2. * PI + rand));
+					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand * 4.256), sin(i / RAYS_PER_PIXEL * 2. * PI + rand * 4.256));
 
 					if(trace(origin, ray, hitPos, d))
 					{
