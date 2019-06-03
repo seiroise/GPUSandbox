@@ -18,5 +18,18 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
 	public class CellularGrowthParticleOnly : MonoBehaviour
 	{
 
+		public int particleCount = 2000;
+
+		PingPongBuffer _particleBuffer;
+
+		private void Start()
+		{
+			// パーティクル本体のデータを保持するためのダブルバッファ
+			_particleBuffer = new PingPongBuffer(particleCount, typeof(CellularParticle));
+			
+			// オブジェクトプールの初期化
+
+			// 分裂可能なオブジェクトのためのオブジェクトプールの初期化
+		}
 	}
 }
