@@ -7,8 +7,11 @@ namespace Seiro.GPUSandbox.Lighting2D
 	{
 		public Material copyMat;
 
-		private PingPongTexture _canvas = null;
-		public PingPongTexture canvas { get { return _canvas; } }
+		private PingPongTexture _baseColor = null;
+		public PingPongTexture baseColor { get { return _baseColor; } }
+
+		private PingPongTexture _substance = null;
+		public PingPongTexture substance { get { return _substance; } }
 
 		private void OnEnable()
 		{
@@ -23,7 +26,7 @@ namespace Seiro.GPUSandbox.Lighting2D
 		private void OnRenderImage(RenderTexture src, RenderTexture dst)
 		{
 			if (copyMat == null) return;
-			Graphics.Blit(canvas.read, dst, copyMat, 0);
+			Graphics.Blit(src, dst);
 		}
 
 		private void BindResources()
@@ -32,15 +35,21 @@ namespace Seiro.GPUSandbox.Lighting2D
 
 			var desc = CreateCommonDesc();
 			desc.colorFormat = RenderTextureFormat.ARGB32;
-			_canvas = new PingPongTexture("canvas", desc);
+			_baseColor = new PingPongTexture("base color", desc);
+			_substance = new PingPongTexture("substance", desc);
 		}
 
 		private void ReleaseResources()
 		{
-			if (_canvas != null)
+			if (_baseColor != null)
 			{
-				_canvas.Dispose();
-				_canvas = null;
+				_baseColor.Dispose();
+				_baseColor = null;
+			}
+			if (_substance != null)
+			{
+				_substance.Dispose();
+				_substance = null;
 			}
 		}
 
@@ -50,6 +59,7 @@ namespace Seiro.GPUSandbox.Lighting2D
 			desc.width = Screen.width;
 			desc.height = Screen.height;
 			desc.autoGenerateMips = false;
+			desc.depthBufferBits = 0;
 			desc.volumeDepth = 1;
 			desc.msaaSamples = 1;
 			desc.dimension = TextureDimension.Tex2D;

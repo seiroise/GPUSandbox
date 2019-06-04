@@ -7,7 +7,7 @@ namespace Seiro.GPUSandbox.Lighting2D
 	public struct BrushMaterial
 	{
 		public Color color;
-		public Vector4 material;
+		public Vector4 substance;
 	}
 
 	public sealed class Brush2D : MonoBehaviour
@@ -29,8 +29,8 @@ namespace Seiro.GPUSandbox.Lighting2D
 			if (renderer == null) return;
 			if (Input.GetMouseButton(0))
 			{
-				DrawSphere(renderer.canvas.read, renderer.canvas.write, ref mat, Input.mousePosition, radius);
-				renderer.canvas.Swap();
+				DrawSphere(renderer.baseColor.read, renderer.baseColor.write, ref mat, Input.mousePosition, radius);
+				renderer.baseColor.Swap();
 			}
 		}
 
@@ -40,12 +40,17 @@ namespace Seiro.GPUSandbox.Lighting2D
 
 			sphereBrush.SetVector("_Screen", new Vector2(Screen.width, Screen.height));
 
-			sphereBrush.SetColor("_Color", mat.color);
-			sphereBrush.SetVector("_Material", mat.material);
+			sphereBrush.SetTexture("_BaseColor", renderer.baseColor.read);
+			sphereBrush.SetTexture("_Substance", renderer.substance.read);
+
+			sphereBrush.SetColor("_C", mat.color);
+			sphereBrush.SetVector("_S", mat.substance);
 			sphereBrush.SetVector("_Position", position);
 			sphereBrush.SetFloat("_Radius2", radius * radius);
 
-			Graphics.Blit(src, dst, sphereBrush, 0);
+			Graphics.SetRenderTarget(
+
+			Graphics.Blit(src, sphereBrush, 0);
 		}
 	}
 }

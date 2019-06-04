@@ -1,5 +1,5 @@
 ﻿Shader "Hidden/SphereBrush"
-{	
+{
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
@@ -36,14 +36,23 @@
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = v.uv;
-				o.st = v.uv * _Screen;
+				o.uv.y = 1 - o.uv.y;
+				o.st = o.uv * _Screen;
 				return o;
 			}
 
-			sampler2D _MainTex;
+			struct mrtoutput
+			{
+				fixed4 color		: COLOR0;
+				fixed4 substance	: COLOR1;
+			};
 
-			fixed4 _Color;
-			float4 _Material;
+			sampler2D _BaseColor;
+			sampler2D _Substance;
+
+			fixed4 _C;
+			fixed4 _S;
+
 			float2 _Position;
 			float _Radius2;
 			
@@ -53,9 +62,13 @@
 				return sqrt(dot(d, d)) - r2;
 			}
 
-			fixed4 frag (v2f i) : SV_Target
+			mrtoutput frag (v2f i)
 			{
-				return sphere(i.st, _Radius2) <= 0 ? fixed4(_Color.rgb, 1) : tex2D(_MainTex, i.uv);
+				mrtoutput o;
+				float s = sphere(i.st, _Radius2);
+				o.color		= lerp(tex2D(_BaseColor, i.uv), fixed4(_C.rgb, 1), step(s, 0));
+				o.substance = lerp(tex2D(_Substance, i.uv), _S, step(s, 0));
+				return o;
 			}
 			ENDCG
 		}
