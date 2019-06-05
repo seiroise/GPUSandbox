@@ -20,4 +20,15 @@ struct SPH_Particle2D
 	float3 color;
 };
 
+// CGS用の2Dパーティクル
+struct CGS_Particle2D
+{
+	float2 position;
+	float2 velocity;
+	float radius;
+	float threshold;
+	int links;
+	uint alive;
+};
+
 #endif

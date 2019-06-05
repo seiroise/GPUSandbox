@@ -93,5 +93,31 @@ namespace Seiro.GPUSandbox
             ping = pong;
             pong = temp;
         }
-    }
+
+		public static Mesh BuildQuad()
+		{
+			var mesh = new Mesh();
+			mesh.hideFlags = HideFlags.HideAndDontSave;
+
+			mesh.vertices = new Vector3[] {
+				new Vector3(-0.5f,  0.5f, 0f), new Vector3( 0.5f,  0.5f, 0f),
+				new Vector3( 0.5f, -0.5f, 0f), new Vector3(-0.5f, -0.5f, 0f)
+			};
+			mesh.uv = new Vector2[] {
+				new Vector2(0f, 0f), new Vector2(1f, 0f),
+				new Vector2(1f, 1f), new Vector2(0f, 1f)
+			};
+			mesh.SetIndices(
+				new int[] {
+				0, 1, 2,
+				2, 3, 0
+				},
+				MeshTopology.Triangles,
+				0
+			);
+			mesh.RecalculateBounds();
+
+			return mesh;
+		}
+	}
 }

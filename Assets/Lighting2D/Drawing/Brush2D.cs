@@ -48,7 +48,7 @@ namespace Seiro.GPUSandbox.Lighting2D
 			sphereBrush.SetVector("_Position", position);
 			sphereBrush.SetFloat("_Radius2", radius * radius);
 
-			Graphics.SetRenderTarget(
+			// Graphics.SetRenderTarget(
 
 			Graphics.Blit(src, sphereBrush, 0);
 		}

@@ -1,0 +1,35 @@
+﻿#pragma kernel InitParticles
+
+#include "Assets/CGInc/Particles.cginc"
+
+#define BLOCK_SIZE 512
+#define THREADS [numthreads(BLOCK_SIZE, 1, 1)]
+
+RWStructuredBuffer<CGS_Particle2D> _Particles;
+AppendStructuredBuffer<int> _ParticlePoolAppend;
+ConsumeStructuredBuffer<int> _ParticlePoolConsume;
+
+CGS_Particle2D CreateParticle2D()
+{
+	CGS_Particle2D p;
+	p.position = float2(0, 0);
+	p.velocity = float2(0, 0);
+	p.radius = p.threshold = 1;
+	p.links = 0;
+	p.alive = true;
+	return p;
+}
+
+THREADS
+void InitParticles(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+
+	uint count, stride;
+	_Particles.GetDimensions(count, stride);
+	if(idx >= count) return;
+
+	CGS_Particle2D p = CreateParticle2D();
+	_Particles[idx] = p;
+	_ParticlePoolAppend.Append(idx);
+}
