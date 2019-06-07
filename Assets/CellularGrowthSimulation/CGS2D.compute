@@ -1,6 +1,8 @@
 ﻿#pragma kernel InitParticles
+#pragma kernel EmitParticles
 
 #include "Assets/CGInc/Particles.cginc"
+#include "Assets/CGInc/Random.cginc"
 
 #define BLOCK_SIZE 512
 #define THREADS [numthreads(BLOCK_SIZE, 1, 1)]
@@ -32,4 +34,23 @@ void InitParticles(uint3 id : SV_DispatchThreadID)
 	CGS_Particle2D p = CreateParticle2D();
 	_Particles[idx] = p;
 	_ParticlePoolAppend.Append(idx);
+}
+
+float2 _Point;
+int _EmitCount;
+
+THREADS
+void EmitParticles(uint3 id : SV_DispatchThreadID)
+{
+	if(id.x >= (uint)_EmitCount) return;
+
+	// これきちんとブロックされるのかな？
+	uint idx = _ParticlePoolConsume.Consume();
+
+	CGS_Particle2D p = _Particles[idx];
+	float2 offset = random_point_on_unit_circle(_Point + id.xx);
+	p.position = _Point + offset;
+	p.radius = hash12_sin(_Point + id.xx);
+	p.alive = true;
+	_Particles[idx] = p;
 }

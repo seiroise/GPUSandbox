@@ -15,17 +15,17 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
 		public uint alive;			// 活性化フラグ
 	}
 
-	public class CellularGrowthParticleOnly : MonoBehaviour
+	public sealed class CellularGrowthParticleOnly : MonoBehaviour
 	{
 
-		public int particleCount = 2000;
+		public int particlesCount = 2000;
 		public ComputeShader compute = null;
 
-		private PingPongBuffer _particleBuffer;
+		private PingPongBuffer _particlesBuffer;
 		private ComputeBuffer _poolBuffer, _dividablePoolBuffer;
 
 		private int[] _countArgs = { 0, 1, 0, 0 };
-		private ComputeBuffer _countArgsBuffer;
+		private ComputeBuffer _countBuffer;
 		private uint[] _drawArgs = { 0, 0, 0, 0, 0 };
 		private ComputeBuffer _drawArgsBuffer;
 
@@ -40,26 +40,27 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
 			// これでオブジェクトプールとして機能させる事ができる。
 
 			// パーティクル本体のデータを保持するためのダブルバッファ
-			_particleBuffer = new PingPongBuffer(particleCount, typeof(CellularParticle));
+			_particlesBuffer = new PingPongBuffer(particlesCount, typeof(CellularParticle));
 
 			// オブジェクトプールの初期化
 			_poolBuffer = new ComputeBuffer(
-				particleCount,
+				particlesCount,
 				Marshal.SizeOf(typeof(int)),
 				ComputeBufferType.Append		// append bufferとして作成
 			);
 			_poolBuffer.SetCounterValue(0);
 
-			_countArgsBuffer = new ComputeBuffer(
+			// append/consume buffer内の要素数を確認するために必要
+			_countBuffer = new ComputeBuffer(
 				4,
 				Marshal.SizeOf(typeof(int)),
 				ComputeBufferType.IndirectArguments
 			);
-			_countArgsBuffer.SetData(_countArgs);
+			_countBuffer.SetData(_countArgs);
 
 			// 分裂可能なオブジェクトを管理するためのオブジェクトプール
 			_dividablePoolBuffer = new ComputeBuffer(
-				particleCount,
+				particlesCount,
 				Marshal.SizeOf(typeof(int)),
 				ComputeBufferType.Append
 			);
@@ -71,25 +72,73 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
 			// インスタンシングを行うためのメッシュをセットアップ。
 			_drawMesh = UtilFunc.BuildQuad();
 			_drawArgs[0] = _drawMesh.GetIndexCount(0);
-			_drawArgs[1] = (uint)particleCount;
+			_drawArgs[1] = (uint)particlesCount;
 			_drawArgsBuffer = new ComputeBuffer(1, Marshal.SizeOf(typeof(uint)) * 5);
 			_drawArgsBuffer.SetData(_drawArgs);
+		}
 
-
+		private void Update()
+		{
+			if (Input.GetMouseButton(0))
+			{
+				EmitParticlesKernel(GetMousePoint());
+			}
 		}
 
 		/// <summary>
-		/// ComputeShaderを使用してそれぞれのバッファを初期化する
+		/// パーティクルバッファ及び、プールバッファの初期化を行う。
 		/// </summary>
 		private void InitParticlesKernel()
 		{
 			if (compute == null) return;
 			var kernel = compute.FindKernel("InitParticles");
+			compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
+			compute.SetBuffer(kernel, "_ParticlePoolAppend", _poolBuffer);	// append/consume bufferを設定する。
+			Dispatch1D(compute, kernel, particlesCount);
+		}
+
+		/// <summary>
+		/// 指定した数のパーティクルを生成する。
+		/// </summary>
+		/// <param name="point"></param>
+		/// <param name="emitCount"></param>
+		private void EmitParticlesKernel(Vector2 point, int emitCount = 32)
+		{
+			if (compute == null) return;
+			// プール内の使用可能なオブジェクトの数を計算。
+			emitCount = Mathf.Min(emitCount, GetRemainParticlesCount());
+			if (emitCount <= 0) return;
+
+			var kernel = compute.FindKernel("Emitparticles");
+			compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
+			compute.SetBuffer(kernel, "_ParticlePoolConsume", _poolBuffer);
+			compute.SetVector("_Point", point);
+			compute.SetInt("_EmitCount", emitCount);
+
+			Dispatch1D(compute, kernel, emitCount);
+		}
+
+		private void Dispatch1D(ComputeShader compute, int kernel, int size)
+		{
 			uint x, y, z;
 			compute.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
-			compute.SetBuffer(kernel, "_Particles", _particleBuffer.read);
-			compute.SetBuffer(kernel, "_ParticlePoolAppend", _poolBuffer);	// append/consume bufferを設定する。
-			compute.Dispatch(kernel, Mathf.CeilToInt(particleCount / (int)x), (int)y, (int)z);
+			compute.Dispatch(kernel, Mathf.CeilToInt(size / (int)x), (int)y, (int)z);
+		}
+
+		private Vector2 GetMousePoint()
+		{
+			Vector2 p = Input.mousePosition;
+			Vector3 w = Camera.main.ScreenToWorldPoint(new Vector3(p.x, p.y, Camera.main.nearClipPlane));
+			Vector3 l = transform.InverseTransformPoint(w);
+			return new Vector2(l.x, l.y);
+		}
+
+		private int GetRemainParticlesCount()
+		{
+			_countBuffer.SetData(_countArgs);
+			ComputeBuffer.CopyCount(_poolBuffer, _countBuffer, 0);
+			_countBuffer.GetData(_countArgs);
+			return _countArgs[0];
 		}
 	}
 }
