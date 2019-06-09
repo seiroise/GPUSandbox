@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 using System;
 using System.Runtime.InteropServices;
 
@@ -38,13 +39,17 @@ namespace Seiro.GPUSandbox
         RenderTexture[] _textures;
         int _r = 0, _w = 1;
 
-        public PingPongTexture(string name, RenderTextureDescriptor desc)
+        public PingPongTexture(string name, RenderTextureDescriptor desc, TextureWrapMode wrapMode = TextureWrapMode.Clamp)
         {
             _textures = new RenderTexture[2];
+
             _textures[0] = RenderTexture.GetTemporary(desc);
             _textures[0].name = name;
+            _textures[0].wrapMode = wrapMode;
+
             _textures[1] = RenderTexture.GetTemporary(desc);
             _textures[1].name = name;
+            _textures[1].wrapMode = wrapMode;
         }
 
         public RenderTexture read { get { return _textures[_r]; } }
@@ -94,30 +99,44 @@ namespace Seiro.GPUSandbox
             pong = temp;
         }
 
-		public static Mesh BuildQuad()
-		{
-			var mesh = new Mesh();
-			mesh.hideFlags = HideFlags.HideAndDontSave;
+        public static Mesh BuildQuad()
+        {
+            var mesh = new Mesh();
+            mesh.hideFlags = HideFlags.HideAndDontSave;
 
-			mesh.vertices = new Vector3[] {
-				new Vector3(-0.5f,  0.5f, 0f), new Vector3( 0.5f,  0.5f, 0f),
-				new Vector3( 0.5f, -0.5f, 0f), new Vector3(-0.5f, -0.5f, 0f)
-			};
-			mesh.uv = new Vector2[] {
-				new Vector2(0f, 0f), new Vector2(1f, 0f),
-				new Vector2(1f, 1f), new Vector2(0f, 1f)
-			};
-			mesh.SetIndices(
-				new int[] {
-				0, 1, 2,
-				2, 3, 0
-				},
-				MeshTopology.Triangles,
-				0
-			);
-			mesh.RecalculateBounds();
+            mesh.vertices = new Vector3[] {
+                new Vector3(-0.5f,  0.5f, 0f), new Vector3( 0.5f,  0.5f, 0f),
+                new Vector3( 0.5f, -0.5f, 0f), new Vector3(-0.5f, -0.5f, 0f)
+            };
+            mesh.uv = new Vector2[] {
+                new Vector2(0f, 0f), new Vector2(1f, 0f),
+                new Vector2(1f, 1f), new Vector2(0f, 1f)
+            };
+            mesh.SetIndices(
+                new int[] {
+                0, 1, 2,
+                2, 3, 0
+                },
+                MeshTopology.Triangles,
+                0
+            );
+            mesh.RecalculateBounds();
 
-			return mesh;
-		}
-	}
+            return mesh;
+        }
+
+        public static RenderTextureDescriptor CreateCommonDesc()
+        {
+            var desc = new RenderTextureDescriptor();
+            desc.width = Screen.width;
+            desc.height = Screen.height;
+            desc.autoGenerateMips = false;
+            desc.depthBufferBits = 0;
+            desc.volumeDepth = 1;
+            desc.msaaSamples = 1;
+            desc.dimension = TextureDimension.Tex2D;
+            desc.sRGB = false;
+            return desc;
+        }
+    }
 }
