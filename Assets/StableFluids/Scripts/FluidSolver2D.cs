@@ -12,6 +12,7 @@ namespace Seiro.GPUSandbox.StableFluids
             Clear = 0,
             Copy,
             CalcDivergence,
+			CalcAndApplyVorticity,
             CalcPressure,
             ApplyPressure,
             AdvectColor,
@@ -151,11 +152,17 @@ namespace Seiro.GPUSandbox.StableFluids
         {
             if (_solver == null || _params == null) return;
 
+			/*
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcDivergence);
             _params.Swap();
+			*/
 
-            for (int i = 0; i < iterations; ++i)
+			_solver.SetTexture(_paramsId, _params.read);
+			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
+			_params.Swap();
+
+			for (int i = 0; i < iterations; ++i)
             {
                 _solver.SetTexture(_paramsId, _params.read);
                 Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcPressure);

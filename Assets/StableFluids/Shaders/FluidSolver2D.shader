@@ -36,10 +36,11 @@
 			return o;
 		}
 		
-		sampler2D_float _Params;	// (x, y) : 速度場, (z) : 発散, (w) : 圧力
+		sampler2D_float _Params;	// (x, y) : 速度場, (z) : 渦度, (w) : 圧力
 		float4 _Params_TexelSize;
 
-		float calc_divergence(float2 x)
+		// 指定した座標の速度場の発散を計算
+		float div_velocity(float2 x)
 		{
 			float4 p_r = tex2D(_Params, x + float2(_Params_TexelSize.x, 0));
 			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
@@ -48,15 +49,33 @@
 			return (p_r.x - p_l.x) + (p_u.y - p_d.y);
 		}
 
-		float calc_pressure(float2 x, float div)
+		// 指定した座標の速度場の回転とそれによって生じるベクトルを計算
+		void calc_vorticity(float2 x, out float3 vort)
 		{
 			float4 p_r = tex2D(_Params, x + float2(_Params_TexelSize.x, 0));
 			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
 			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
-			return (p_r.w + p_l.w + p_u.w + p_d.w + div) * 0.25;
+			vort = float3(
+				abs(p_u.z) - abs(p_d.z),
+				abs(p_l.z) - abs(p_r.z),
+				p_d.x - p_u.x + p_r.y - p_l.y
+			);
 		}
 
+		// 指定した座標の速度場の発散を0に抑えるための圧力を計算
+		float calc_pressure(float2 x)
+		{
+			float4 p_r = tex2D(_Params, x + float2(_Params_TexelSize.x, 0));
+			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
+			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
+			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
+			// 発散はこの場で計算する
+			float d = (p_r.x - p_l.x) + (p_u.y - p_d.y);
+			return (p_r.w + p_l.w + p_u.w + p_d.w - d) * 0.25;
+		}
+
+		// 圧力場の勾配を出力
 		float2 grad_pressure(float2 x)
 		{
 			float4 p_r = tex2D(_Params, x + float2(_Params_TexelSize.x, 0));
@@ -66,6 +85,17 @@
 			return float2((p_r.w - p_l.w) * .5, (p_u.w - p_d.w) * .5);
 		}
 
+		// 速度場のラプラシアンを計算
+		float2 lap_velocity(float2 x, float2 v)
+		{
+			float4 p_r = tex2D(_Params, x + float2(_Params_TexelSize.x, 0));
+			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
+			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
+			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
+			return p_r.xy + p_l.xy + p_u.xy + p_d.xy - 4 * v;
+		}
+
+		// テクスチャを0で初期化
 		float4 frag_clear(v2f i) : SV_Target
 		{
 			return float4(0, 0, 0, 0);
@@ -73,40 +103,60 @@
 
 		sampler2D _SourceTex;
 
+		// _SourceTexの内容をコピーする
 		fixed4 frag_copy(v2f i) : SV_Target
 		{
 			return tex2D(_SourceTex, i.uv);
 		}
 
+		// 速度場の発散を計算する
 		float4 frag_calc_div(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
-			p.z = calc_divergence(i.uv);
+			p.z = div_velocity(i.uv);
 			return p;
 		}
 
+		// 速度場の渦度を計算しそれを速度場に適用する
+		float4 frag_apply_vorticity(v2f i) : SV_Target
+		{
+			float4 p = tex2D(_Params, i.uv);
+			float3 vort;
+			calc_vorticity(i.uv, vort);
+			p.xy += vort.xy * (.11 / length(vort.xy + 1e-9) * vort.z);
+			p.z = vort.z;
+			return p;
+		}
+
+		// 速度場の発散を0にするための圧力を計算する
+		// これを複数回呼び出すことでpoisson方程式を解く
 		float4 frag_calc_pres(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
-			p.w = calc_pressure(i.uv, -p.z);
+			p.w = calc_pressure(i.uv);
 			return p;
 		}
 
+		// 速度場に圧力場の勾配を適用する
 		float4 frag_apply_pres(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
 			p.xy -= grad_pressure(i.uv);
+			p.xy += .55 * lap_velocity(i.uv, p.xy) * DT;
+			p.xy = p.xy * (1 - 1e-4);	// 速度の減衰
 			return p;
 		}
 
 		sampler2D _MainTex;
 
+		// 色を移流させる
 		fixed4 frag_advect_color(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
 			return tex2D(_MainTex, i.uv - (p.xy * DT));
 		}
 
+		// 速度場を移流させる
 		float4 frag_advect_velocity(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
@@ -182,6 +232,13 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_calc_div
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_apply_vorticity
 			ENDCG
 		}
 		Pass
