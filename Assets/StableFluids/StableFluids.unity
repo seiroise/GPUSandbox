@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657838, g: 0.49641234, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -207,11 +207,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c1f15080df7840128d8f6956f70a3e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  view: 5
-  iterations: 4
+  view: 4
+  p0: 1
+  p1: 1
+  p2: 1
+  p3: 1
+  iterations: 10
+  vorticityCoef: 0.01
+  viscosityCoef: 0.25
+  advectionScale: 0.998
   mouse: 0
-  mouseRadius: 0.001
-  mouseForce: 103
+  mouseRadius: 0.01
+  mouseForce: 108
   copy: {fileID: 2100000, guid: c27815a51313d433180a0a258079e480, type: 2}
   sourceTexture: {fileID: 2800000, guid: 1200c759395d04432a13311589c27192, type: 3}
 --- !u!124 &752491230

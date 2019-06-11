@@ -13,6 +13,7 @@
 		#include "UnityCG.cginc"
 
 		#define DT 0.016
+		#define PI 3.14159265
 
 		struct appdata
 		{
@@ -39,6 +40,8 @@
 		sampler2D_float _Params;	// (x, y) : 速度場, (z) : 渦度, (w) : 圧力
 		float4 _Params_TexelSize;
 
+		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 遺留減衰
+
 		// 指定した座標の速度場の発散を計算
 		float div_velocity(float2 x)
 		{
@@ -57,9 +60,9 @@
 			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
 			vort = float3(
-				abs(p_u.z) - abs(p_d.z),
-				abs(p_l.z) - abs(p_r.z),
-				p_d.x - p_u.x + p_r.y - p_l.y
+			abs(p_u.z) - abs(p_d.z),
+			abs(p_l.z) - abs(p_r.z),
+			p_d.x - p_u.x + p_r.y - p_l.y
 			);
 		}
 
@@ -123,7 +126,7 @@
 			float4 p = tex2D(_Params, i.uv);
 			float3 vort;
 			calc_vorticity(i.uv, vort);
-			p.xy += vort.xy * (.11 / length(vort.xy + 1e-9) * vort.z);
+			p.xy += vort.xy * (_SimConstants.x / length(vort.xy + 1e-9) * vort.z);
 			p.z = vort.z;
 			return p;
 		}
@@ -142,8 +145,8 @@
 		{
 			float4 p = tex2D(_Params, i.uv);
 			p.xy -= grad_pressure(i.uv);
-			p.xy += .55 * lap_velocity(i.uv, p.xy) * DT;
-			p.xy = p.xy * (1 - 1e-4);	// 速度の減衰
+			p.xy += _SimConstants.y * lap_velocity(i.uv, p.xy) * DT;
+			p.xy = p.xy * _SimConstants.z;	// 速度の遺留による減衰
 			return p;
 		}
 
@@ -205,10 +208,22 @@
 			return p;
 		}
 
-		float4 frag_velocity_color(v2f i) : SV_Target
+		// それぞれのパラメータの描画
+		float4 _RenderingParams;
+		fixed4 frag_velocity_color(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.st);
-			return length(p.xy);
+			return fixed4(length(p.xy) * _RenderingParams.rgb, 1);
+		}
+		fixed4 frag_vorticity_color(v2f i) : SV_Target
+		{
+			float4 p = tex2D(_Params, i.st);
+			return fixed4(p.z * _RenderingParams.rgb, 1);
+		}
+		fixed4 frag_pressure_color(v2f i) : SV_Target
+		{
+			float4 p = tex2D(_Params, i.st);
+			return fixed4(p.w * _RenderingParams.rgb, 1);
 		}
 
 		ENDCG
@@ -283,11 +298,27 @@
 			#pragma fragment frag_line_seg
 			ENDCG
 		}
+
+		// ここからそれぞれのパラメータの描画
 		Pass
 		{
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_velocity_color
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_vorticity_color
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_pressure_color
 			ENDCG
 		}
 	}

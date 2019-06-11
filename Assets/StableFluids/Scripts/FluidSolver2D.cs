@@ -12,7 +12,7 @@ namespace Seiro.GPUSandbox.StableFluids
             Clear = 0,
             Copy,
             CalcDivergence,
-			CalcAndApplyVorticity,
+            CalcAndApplyVorticity,
             CalcPressure,
             ApplyPressure,
             AdvectColor,
@@ -20,6 +20,8 @@ namespace Seiro.GPUSandbox.StableFluids
             Mouse_Circle,
             Mouse_LineSeg,
             VeloicityColor,
+            VorticityColor,
+            PressureColor,
         }
 
         /// <summary>
@@ -29,9 +31,9 @@ namespace Seiro.GPUSandbox.StableFluids
         {
             All,
             Velocity,
-            Divergence,
-            Pressure,
             VelocityColor,
+            Vorticity,
+            Pressure,
             Texture
         }
 
@@ -45,14 +47,28 @@ namespace Seiro.GPUSandbox.StableFluids
         }
 
         public View view = View.All;
+        public float p0, p1, p2, p3;
+
+        [Space]
 
         [Range(1, 10)]
         public int iterations = 4;
+        [Range(0, .5f)]
+        public float vorticityCoef = .11f;
+        [Range(0.01f, 10f)]
+        public float viscosityCoef = .25f;
+        [Range(0.9f, 1f)]
+        public float advectionScale = .98f;
+
+        [Space]
+
         public MouseInteraction mouse = MouseInteraction.Circle;
         [Range(0.001f, .2f)]
         public float mouseRadius = 0.1f;
         [Range(0.01f, 1000f)]
         public float mouseForce = 1f;
+
+        [Space]
 
         public Material copy;
         public Texture2D sourceTexture;
@@ -69,6 +85,8 @@ namespace Seiro.GPUSandbox.StableFluids
         private int _forceDirId;
         private int _lineSegId;
         private int _lineWidthId;
+        private int _simConstantsId;
+        private int _renderingParamsId;
 
         private void OnEnable()
         {
@@ -121,6 +139,8 @@ namespace Seiro.GPUSandbox.StableFluids
             _forceDirId = Shader.PropertyToID("_ForceDir");
             _lineSegId = Shader.PropertyToID("_LineSeg");
             _lineWidthId = Shader.PropertyToID("_LineWidth");
+            _simConstantsId = Shader.PropertyToID("_SimConstants");
+            _renderingParamsId = Shader.PropertyToID("_RenderingParams");
 
             // 表示用テクスチャへの描画
             _view = new PingPongTexture("stablue fluids view", desc, TextureWrapMode.Repeat);
@@ -152,17 +172,12 @@ namespace Seiro.GPUSandbox.StableFluids
         {
             if (_solver == null || _params == null) return;
 
-			/*
+            _solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, advectionScale, 0f));
             _solver.SetTexture(_paramsId, _params.read);
-            Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcDivergence);
+            Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
             _params.Swap();
-			*/
 
-			_solver.SetTexture(_paramsId, _params.read);
-			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
-			_params.Swap();
-
-			for (int i = 0; i < iterations; ++i)
+            for (int i = 0; i < iterations; ++i)
             {
                 _solver.SetTexture(_paramsId, _params.read);
                 Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcPressure);
@@ -199,11 +214,22 @@ namespace Seiro.GPUSandbox.StableFluids
 
         private void Draw(RenderTexture src, RenderTexture dst)
         {
-            Vector4 viewMask = new Vector4(1f, 1f, 1f, 1f);
+            Vector4 renderingParams = new Vector4(p0, p1, p2, p3);
+            _solver.SetVector(_renderingParamsId, renderingParams);
             if (view == View.VelocityColor)
             {
                 _solver.SetTexture(_paramsId, _params.read);
                 Graphics.Blit(null, dst, _solver, (int)SolverPass.VeloicityColor);
+            }
+            else if (view == View.Vorticity)
+            {
+                _solver.SetTexture(_paramsId, _params.read);
+                Graphics.Blit(null, dst, _solver, (int)SolverPass.VorticityColor);
+            }
+            else if (view == View.Pressure)
+            {
+                _solver.SetTexture(_paramsId, _params.read);
+                Graphics.Blit(null, dst, _solver, (int)SolverPass.PressureColor);
             }
             else if (view == View.Texture)
             {
