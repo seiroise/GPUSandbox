@@ -208,6 +208,18 @@
 			return p;
 		}
 
+		fixed4 _MouseColor;
+
+		// マウスの位置に描画
+		fixed4 frag_draw_circle(v2f i) : SV_Target
+		{
+			fixed4 col = tex2D(_MainTex, i.uv);
+			float2 d = i.uv - _Mouse.xy;
+			float r2 = _Mouse.z * _Mouse.z;
+			float c = sdf_circle(d, r2);
+			return lerp(col, _MouseColor, step(c, 0));
+		}
+
 		// それぞれのパラメータの描画
 		float4 _RenderingParams;
 		fixed4 frag_velocity_color(v2f i) : SV_Target
@@ -296,6 +308,13 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_line_seg
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_draw_circle
 			ENDCG
 		}
 

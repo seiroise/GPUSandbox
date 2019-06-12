@@ -19,6 +19,7 @@ namespace Seiro.GPUSandbox.StableFluids
             AdvectVelocity,
             Mouse_Circle,
             Mouse_LineSeg,
+			Draw_Circle,
             VeloicityColor,
             VorticityColor,
             PressureColor,
@@ -43,7 +44,8 @@ namespace Seiro.GPUSandbox.StableFluids
         public enum MouseInteraction
         {
             Circle,
-            LineSeg
+            LineSeg,
+			Source,
         }
 
         public View view = View.All;
@@ -67,6 +69,9 @@ namespace Seiro.GPUSandbox.StableFluids
         public float mouseRadius = 0.1f;
         [Range(0.01f, 1000f)]
         public float mouseForce = 1f;
+		public Vector2 mouseForceDir = Vector2.one;
+		public bool autoMouseColor = true;
+		public Gradient mouseColorPallet;
 
         [Space]
 
@@ -82,6 +87,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private int _sourceTexId;
         private int _paramsId;
         private int _mouseId;
+		private int _mouseColorId;
         private int _forceDirId;
         private int _lineSegId;
         private int _lineWidthId;
@@ -100,21 +106,21 @@ namespace Seiro.GPUSandbox.StableFluids
 
         private void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
-            // マウスインタラクション
-            if (Input.GetMouseButton(0))
+			// マウスインタラクション
+			Vector2 st = Input.mousePosition / new Vector2(Screen.width, Screen.height);
+			if (Input.GetMouseButton(0))
             {
-                Vector2 st = Input.mousePosition / new Vector2(Screen.width, Screen.height);
                 if (!_mouseDragging) _prevMouseSt = st;
-                ApplyExternalForce(ref st, ref _prevMouseSt);
-                _prevMouseSt = st;
+                ApplyInteraction(ref st, ref _prevMouseSt);
             }
             _mouseDragging = Input.GetMouseButton(0);
 
-            Step();
+			// マウスインタラクションの描画
+			DrawInteraction(st);
+			_prevMouseSt = st;
 
-            // _solver.SetTexture(_paramsId, _work.read);
-            // Graphics.Blit(src, dst, _solver, (int)SolverPass.AdvectColor);
-            // Graphics.Blit(null, dst, _solver, (int)SolverPass.Mouse);
+			// シミュレーションを進める
+			Step();
 
             // 速度を移流させる
             _solver.SetTexture(_paramsId, _params.read);
@@ -136,6 +142,7 @@ namespace Seiro.GPUSandbox.StableFluids
             _sourceTexId = Shader.PropertyToID("_SourceTex");
             _paramsId = Shader.PropertyToID("_Params");
             _mouseId = Shader.PropertyToID("_Mouse");
+			_mouseColorId = Shader.PropertyToID("_MouseColor");
             _forceDirId = Shader.PropertyToID("_ForceDir");
             _lineSegId = Shader.PropertyToID("_LineSeg");
             _lineWidthId = Shader.PropertyToID("_LineWidth");
@@ -189,28 +196,46 @@ namespace Seiro.GPUSandbox.StableFluids
             _params.Swap();
         }
 
-        private void ApplyExternalForce(ref Vector2 st, ref Vector2 prevSt)
+        private void ApplyInteraction(ref Vector2 st, ref Vector2 prevSt)
         {
             Vector2 d = st - prevSt;
             int pass = -1;
-            if (mouse == MouseInteraction.Circle)
-            {
-                _solver.SetVector(_mouseId, new Vector4(st.x, st.y, mouseRadius, mouseForce * d.magnitude));
-                _solver.SetVector(_forceDirId, d.normalized);
-                pass = (int)SolverPass.Mouse_Circle;
-            }
-            else
-            {
-                _solver.SetVector(_lineSegId, new Vector4(prevSt.x, prevSt.y, st.x, st.y));
-                _solver.SetFloat(_lineWidthId, mouseRadius);
-                _solver.SetVector(_forceDirId, d.normalized);
-                pass = (int)SolverPass.Mouse_LineSeg;
-            }
+			if (mouse == MouseInteraction.Circle)
+			{
+				_solver.SetVector(_mouseId, new Vector4(st.x, st.y, mouseRadius, mouseForce * d.magnitude));
+				_solver.SetVector(_forceDirId, d.normalized);
+				pass = (int)SolverPass.Mouse_Circle;
+			}
+			else if (mouse == MouseInteraction.LineSeg)
+			{
+				_solver.SetVector(_lineSegId, new Vector4(prevSt.x, prevSt.y, st.x, st.y));
+				_solver.SetFloat(_lineWidthId, mouseRadius);
+				_solver.SetVector(_forceDirId, d.normalized);
+				pass = (int)SolverPass.Mouse_LineSeg;
+			}
+			else
+			{
+				_solver.SetVector(_mouseId, new Vector4(st.x, st.y, mouseRadius, mouseForce));
+				_solver.SetVector(_forceDirId, mouseForceDir);
+				pass = (int)SolverPass.Mouse_Circle;
+			}
 
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, pass);
             _params.Swap();
         }
+
+		private void DrawInteraction(Vector2 st)
+		{
+			if (Input.GetMouseButton(1) || (autoMouseColor && Input.GetMouseButton(0)))
+			{
+				_solver.SetTexture(_paramsId, _params.read);
+				_solver.SetVector(_mouseId, new Vector4(st.x, st.y, mouseRadius, 0f));
+				_solver.SetColor(_mouseColorId, mouseColorPallet.Evaluate(Mathf.Sin(Time.time) * .5f + .5f));
+				Graphics.Blit(_view.read, _view.write, _solver, (int)SolverPass.Draw_Circle);
+				_view.Swap();
+			}
+		}
 
         private void Draw(RenderTexture src, RenderTexture dst)
         {
