@@ -53,7 +53,7 @@ namespace Seiro.GPUSandbox.StableFluids
 
         [Space]
 
-        [Range(1, 10)]
+        [Range(1, 20)]
         public int iterations = 4;
         [Range(0, .5f)]
         public float vorticityCoef = .11f;

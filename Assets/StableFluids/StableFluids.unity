@@ -212,11 +212,11 @@ MonoBehaviour:
   p1: 1
   p2: 1
   p3: 1
-  iterations: 10
+  iterations: 20
   vorticityCoef: 0.146
-  viscosityCoef: 0.25
+  viscosityCoef: 0.01
   advectionScale: 0.998
-  mouse: 0
+  mouse: 2
   mouseRadius: 0.01
   mouseForce: 0.1
   mouseForceDir: {x: 0, y: 1}
