@@ -146,17 +146,19 @@
 			float4 p = tex2D(_Params, i.uv);
 			p.xy -= grad_pressure(i.uv);
 			p.xy += _SimConstants.y * lap_velocity(i.uv, p.xy) * DT;
-			p.xy = p.xy * _SimConstants.z;	// 速度の遺留による減衰
+			p.xy = p.xy;
 			return p;
 		}
 
 		sampler2D _MainTex;
 
+
 		// 色を移流させる
 		fixed4 frag_advect_color(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
-			return tex2D(_MainTex, i.uv - (p.xy * DT));
+			fixed4 c = tex2D(_MainTex, i.uv - (p.xy * DT));
+			return c * _SimConstants.w;		// 速度場による色の移流と減衰
 		}
 
 		// 速度場を移流させる
@@ -164,7 +166,7 @@
 		{
 			float4 p = tex2D(_Params, i.uv);
 			float4 q = tex2D(_Params, i.uv - (p.xy * DT));
-			p.xy = q.xy;
+			p.xy = q.xy * _SimConstants.z;	// 速度の移流による減衰;
 			return p;
 		}
 

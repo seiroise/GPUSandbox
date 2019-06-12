@@ -138,5 +138,17 @@ namespace Seiro.GPUSandbox
             desc.sRGB = false;
             return desc;
         }
+
+        public static Texture2D CreatePallete(Gradient grad, int width)
+        {
+            var tex = new Texture2D(width, 1);
+            var invW = 1f / width;
+            for (int x = 0; x < width; ++x)
+            {
+                tex.SetPixel(x, 0, grad.Evaluate(x * invW));
+            }
+            tex.Apply();
+            return tex;
+        }
     }
 }
