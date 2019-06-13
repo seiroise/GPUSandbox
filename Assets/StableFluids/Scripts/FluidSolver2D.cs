@@ -48,12 +48,14 @@ namespace Seiro.GPUSandbox.StableFluids
             Source,
         }
 
+		public bool isSimulated = true;
+
         public View view = View.All;
         public float p0, p1, p2, p3;
 
         [Space]
 
-        [Range(1, 20)]
+        [Range(1, 40)]
         public int iterations = 4;
         [Range(0, .5f)]
         public float vorticityCoef = .11f;
@@ -106,7 +108,15 @@ namespace Seiro.GPUSandbox.StableFluids
             ReleaseResources();
         }
 
-        private void OnRenderImage(RenderTexture src, RenderTexture dst)
+		private void Update()
+		{
+			if (Input.GetKeyDown(KeyCode.Space))
+			{
+				isSimulated = !isSimulated;
+			}
+		}
+
+		private void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
             // マウスインタラクション
             Vector2 st = Input.mousePosition / new Vector2(Screen.width, Screen.height);
@@ -121,13 +131,11 @@ namespace Seiro.GPUSandbox.StableFluids
             DrawInteraction(st);
             _prevMouseSt = st;
 
-            // シミュレーションを進める
-            Step();
-
-            // 速度を移流させる
-            _solver.SetTexture(_paramsId, _params.read);
-            Graphics.Blit(null, _params.write, _solver, (int)SolverPass.AdvectVelocity);
-            _params.Swap();
+			// シミュレーションを進める
+			if (isSimulated)
+			{
+				Step();
+			}
 
             // 最終的なレンダリング
             Draw(src, dst);
@@ -196,7 +204,17 @@ namespace Seiro.GPUSandbox.StableFluids
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ApplyPressure);
             _params.Swap();
-        }
+
+			// 色の移流
+			_solver.SetTexture(_paramsId, _params.read);
+			Graphics.Blit(_view.read, _view.write, _solver, (int)SolverPass.AdvectColor);
+			_view.Swap();
+
+			// 速度の移流
+			_solver.SetTexture(_paramsId, _params.read);
+			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.AdvectVelocity);
+			_params.Swap();
+		}
 
         private void ApplyInteraction(ref Vector2 st, ref Vector2 prevSt)
         {
@@ -260,9 +278,6 @@ namespace Seiro.GPUSandbox.StableFluids
             }
             else if (view == View.Texture)
             {
-                _solver.SetTexture(_paramsId, _params.read);
-                Graphics.Blit(_view.read, _view.write, _solver, (int)SolverPass.AdvectColor);
-                _view.Swap();
                 Graphics.Blit(_view.read, dst);
             }
             else
