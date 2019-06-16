@@ -42,9 +42,9 @@
 			float4 _Dye;
 			float _Smoothlen;
 
-#if SHADER_TARGET >= 45
-			StructuredBuffer<SPH_Particle2D> buf;
-#endif
+			#if SHADER_TARGET >= 45
+				StructuredBuffer<SPH_Particle2D> buf;
+			#endif
 
 			v2f vert(appdata v, uint id : SV_InstanceID)
 			{

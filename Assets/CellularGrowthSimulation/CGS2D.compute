@@ -1,5 +1,8 @@
 ﻿#pragma kernel InitParticles
 #pragma kernel EmitParticles
+#pragma kernel UpdateParticles
+#pragma kernel StoreDividableParticles
+#pragma kernel DivideParticles
 
 #include "Assets/CGInc/Particles.cginc"
 #include "Assets/CGInc/Random.cginc"
@@ -7,9 +10,16 @@
 #define BLOCK_SIZE 512
 #define THREADS [numthreads(BLOCK_SIZE, 1, 1)]
 
+StructuredBuffer<CGS_Particle2D> _ParticlesRead;
 RWStructuredBuffer<CGS_Particle2D> _Particles;
 AppendStructuredBuffer<int> _ParticlePoolAppend;
 ConsumeStructuredBuffer<int> _ParticlePoolConsume;
+
+AppendStructuredBuffer<int> _DividablePoolAppend;
+ConsumeStructuredBuffer<int> _DividablePoolConsume;
+
+uint _ParticlesCount;
+float _DT;
 
 CGS_Particle2D CreateParticle2D()
 {
@@ -26,12 +36,11 @@ THREADS
 void InitParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
-
-	uint count, stride;
-	_Particles.GetDimensions(count, stride);
-	if(idx >= count) return;
+	
+	if(idx >= _ParticlesCount) return;
 
 	CGS_Particle2D p = CreateParticle2D();
+	p.alive = false;
 	_Particles[idx] = p;
 	_ParticlePoolAppend.Append(idx);
 }
@@ -48,9 +57,113 @@ void EmitParticles(uint3 id : SV_DispatchThreadID)
 	uint idx = _ParticlePoolConsume.Consume();
 
 	CGS_Particle2D p = _Particles[idx];
-	float2 offset = random_point_on_unit_circle(_Point + id.xx);
+	float2 offset = random_point_on_unit_circle(_Point + idx);
 	p.position = _Point + offset;
-	p.radius = hash12_sin(_Point + id.xx);
+	p.radius = hash12_sin(p.position + idx);
 	p.alive = true;
 	_Particles[idx] = p;
+}
+
+float _Drag;
+float _Limit;
+float _Repulsion;
+float _Grow;
+
+THREADS
+void UpdateParticles(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+	if(idx >= _ParticlesCount) return;
+
+	// パーティクルのデータを読み込み用ハッファから
+	CGS_Particle2D p = _ParticlesRead[idx];
+
+	// 活性化しているパーティクルのみを取り扱う。
+	if(p.alive)
+	{
+		// パーティクルの成長
+		p.radius = min(p.threshold, p.radius  + _DT * _Grow);
+
+		// パーティクル同士の反発
+		for(uint i = 0; i < _ParticlesCount; ++i)
+		{
+			CGS_Particle2D other = _ParticlesRead[i];
+			if(i == idx || !other.alive) continue;
+
+			float2 dir = p.position - other.position;
+			float l = length(dir);
+			float r = (p.radius + other.radius) * _Repulsion;
+			if(l < r)
+			{
+				p.velocity += normalize(dir) * (r - l);
+			}
+		}
+
+		// 計算した速度を減衰させる。実際には自分のvelocityと相手のvelocityを見て加える力の向きは変更する必要があるだろうね。
+		float2 vel = p.velocity * _DT;
+		float vl = length(vel);
+		if(vl > 0)
+		{
+			p.position += normalize(vel) * min(vl, _Limit);
+			p.velocity = normalize(p.velocity) * min(_Limit, length(p.velocity) * _Drag);
+		}
+		else
+		{
+			p.velocity = float2(0, 0);
+		}
+
+		// 更新したデータを書き込み用のバッファへ
+		_Particles[idx] = p;
+	}
+}
+
+bool IsDividableParticle(in CGS_Particle2D p)
+{
+	float rate = p.radius / p.threshold;
+	return rate >= 0.95;
+}
+
+uint DivideParticle(uint idx, float2 offset)
+{
+	CGS_Particle2D parent = _ParticlesRead[idx];
+	CGS_Particle2D child = CreateParticle2D();
+
+	// 半径を小さくする
+	float hr = max(parent.radius * .5, .1);
+	parent.radius = child.radius = hr;
+
+	// 座標を調整
+	
+
+}
+
+void DivideParticle(uint idx)
+{
+	CGS_Particle2D parent = _ParticlesRead[idx];
+	float2 offset = random_point_on_unit_circle(parent.position + idx) * parent.radius * .25;
+
+}
+
+THREADS
+void StoreDividableParticles(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+	if(idx >= _ParticlesCount) return;
+
+	CGS_Particle2D p = _ParticlesRead[idx];
+	if(p.alive && IsDividableParticle(p))
+	{
+		_DividablePoolAppend.Append(idx);
+	}
+}
+
+int _DivideCount;
+
+THREADS
+void DivideParticles(uint3 id : SV_DispatchThreadID)
+{
+	if(id.x >= _DivideCount) return;
+
+	uint idx = _DividablePoolConsume.Consume();
+	DivideParticle(idx);
 }
