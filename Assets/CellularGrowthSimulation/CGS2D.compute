@@ -1,8 +1,8 @@
-﻿#pragma kernel InitParticles
-#pragma kernel EmitParticles
-#pragma kernel UpdateParticles
-#pragma kernel StoreDividableParticles
-#pragma kernel DivideParticles
+﻿#pragma kernel CS_InitParticles
+#pragma kernel CS_EmitParticles
+#pragma kernel CS_UpdateParticles
+#pragma kernel CS_StoreDividableParticles
+#pragma kernel CS_DivideParticles
 
 #include "Assets/CGInc/Particles.cginc"
 #include "Assets/CGInc/Random.cginc"
@@ -33,7 +33,7 @@ CGS_Particle2D CreateParticle2D()
 }
 
 THREADS
-void InitParticles(uint3 id : SV_DispatchThreadID)
+void CS_InitParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
 	
@@ -49,7 +49,7 @@ float2 _Point;
 int _EmitCount;
 
 THREADS
-void EmitParticles(uint3 id : SV_DispatchThreadID)
+void CS_EmitParticles(uint3 id : SV_DispatchThreadID)
 {
 	if(id.x >= (uint)_EmitCount) return;
 
@@ -70,7 +70,7 @@ float _Repulsion;
 float _Grow;
 
 THREADS
-void UpdateParticles(uint3 id : SV_DispatchThreadID)
+void CS_UpdateParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
 	if(idx >= _ParticlesCount) return;
@@ -85,6 +85,7 @@ void UpdateParticles(uint3 id : SV_DispatchThreadID)
 		p.radius = min(p.threshold, p.radius  + _DT * _Grow);
 
 		// パーティクル同士の反発
+		// ここの判定はBitonicSortに変更すれば、早くなる。どのくらい早くなるのかはわからないけど。
 		for(uint i = 0; i < _ParticlesCount; ++i)
 		{
 			CGS_Particle2D other = _ParticlesRead[i];
@@ -128,24 +129,39 @@ uint DivideParticle(uint idx, float2 offset)
 	CGS_Particle2D parent = _ParticlesRead[idx];
 	CGS_Particle2D child = CreateParticle2D();
 
-	// 半径を小さくする
+	// 分裂することになるので半径を半分にする。
+	// つまり、質量が保存されていない。
 	float hr = max(parent.radius * .5, .1);
 	parent.radius = child.radius = hr;
 
 	// 座標を調整
-	
+	float2 center = parent.position;
+	parent.position = center + offset;
+	child.position = center - offset;
 
+	// 成長の限度を設定
+	float x = hash12_sin(parent.position);
+	child.threshold = x + hr;
+
+	// 子を更新
+	uint cidx = _ParticlePoolConsume.Consume();
+	_Particles[cidx] = child;
+
+	// 親を更新
+	_Particles[idx] = parent;
+
+	return cidx;
 }
 
-void DivideParticle(uint idx)
+uint DivideParticle(uint idx)
 {
 	CGS_Particle2D parent = _ParticlesRead[idx];
 	float2 offset = random_point_on_unit_circle(parent.position + idx) * parent.radius * .25;
-
+	return DivideParticle(idx, offset);
 }
 
 THREADS
-void StoreDividableParticles(uint3 id : SV_DispatchThreadID)
+void CS_StoreDividableParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
 	if(idx >= _ParticlesCount) return;
@@ -157,13 +173,20 @@ void StoreDividableParticles(uint3 id : SV_DispatchThreadID)
 	}
 }
 
-int _DivideCount;
+uint _DivideCount;
 
 THREADS
-void DivideParticles(uint3 id : SV_DispatchThreadID)
+void CS_DivideParticles(uint3 id : SV_DispatchThreadID)
 {
+	// Consumeバッファの内容量はcompute側では考慮しないので、
+	// CPU側で_DivideCountは調整してください。
 	if(id.x >= _DivideCount) return;
-
 	uint idx = _DividablePoolConsume.Consume();
 	DivideParticle(idx);
+}
+
+THREADS
+void CS_StoreDividableEdges(uint3 id : SV_DispatchThreadID)
+{
+	
 }

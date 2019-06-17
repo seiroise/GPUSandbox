@@ -12,11 +12,20 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
     {
         public Vector2 position;    // 粒子の座標
         public Vector2 velocity;    // 粒子の保持している速度
-        public float rdius;         // 粒子の半径
+        public float rudius;        // 粒子の半径
         public float threshold;     // 粒子の最大半径
         public int links;           // 接続しているエッジの数
         public uint alive;          // 活性化フラグ
     }
+
+	[Serializable]
+	[StructLayout(LayoutKind.Sequential)]
+	public struct CGS_Edge2D
+	{
+		public int a, b;			// 接続している粒子の番号
+		public Vector2 force;		// お互いを引きつけるための力
+		uint alive;					// エッジの活性化フラグ
+	}
 
     public sealed class CellularGrowthParticleOnly : MonoBehaviour
     {
@@ -96,13 +105,15 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
             _drawMesh = UtilFunc.BuildQuad();
             _drawArgs[0] = _drawMesh.GetIndexCount(0);
             _drawArgs[1] = (uint)particlesCount;
-            _drawArgsBuffer = new ComputeBuffer(1, Marshal.SizeOf(typeof(uint)) * 5);
+            _drawArgsBuffer = new ComputeBuffer(1, Marshal.SizeOf(typeof(uint)) * 5, ComputeBufferType.IndirectArguments);
             _drawArgsBuffer.SetData(_drawArgs);
 
             // レンダリング用の各種項目の準備
             _pallete = UtilFunc.CreatePallete(gradient, 128);
-            renderMat.SetTexture("_Pallete", _pallete);
             _drawMesh = UtilFunc.BuildQuad();
+
+			// 分裂処理用のコルーチンを起動
+			StartCoroutine(Divider());
         }
 
         private void Update()
@@ -126,7 +137,7 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
         private void InitParticlesKernel()
         {
             if (compute == null) return;
-            var kernel = compute.FindKernel("InitParticles");
+            var kernel = compute.FindKernel("CS_InitParticles");
             compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_ParticlePoolAppend", _poolBuffer);
             compute.SetInt("_ParticlesCount", particlesCount);
@@ -148,7 +159,7 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
             Debug.Log(emitCount + " : " + GetRemainParticlesCount());
             if (emitCount <= 0) return;
 
-            var kernel = compute.FindKernel("EmitParticles");
+            var kernel = compute.FindKernel("CS_EmitParticles");
             compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_ParticlePoolConsume", _poolBuffer);
             compute.SetVector("_Point", point);
@@ -180,10 +191,19 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
             return _countArgs[0];
         }
 
+		private int GetElementsCount(ComputeBuffer buffer)
+		{
+			if (buffer == null) return 0;
+			_countBuffer.SetData(_countArgs);
+			ComputeBuffer.CopyCount(buffer, _countBuffer, 0);
+			_countBuffer.GetData(_countArgs);
+			return _countArgs[0];
+		}
+
         private void UpdateParticles()
         {
             if (compute == null) return;
-            int kernel = compute.FindKernel("UpdateParticles");
+            int kernel = compute.FindKernel("CS_UpdateParticles");
 
             compute.SetBuffer(kernel, "_ParticlesRead", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_Particles", _particlesBuffer.write);
@@ -208,7 +228,8 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
 
             renderMat.SetPass(0);
             renderMat.SetBuffer("buf", _particlesBuffer.read);
-            Graphics.DrawMeshInstancedIndirect(_drawMesh, 0, renderMat, new Bounds(Vector3.zero, simulationRange), _drawArgsBuffer);
+			renderMat.SetTexture("_Pallete", _pallete);
+			Graphics.DrawMeshInstancedIndirect(_drawMesh, 0, renderMat, new Bounds(Vector3.zero, simulationRange), _drawArgsBuffer);
         }
 
         private IEnumerator Divider()
@@ -224,18 +245,37 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
         private void DivideParticles()
         {
             StoreDividableParticles();
+			DivideParticlesByKernel();
         }
 
         private void StoreDividableParticles()
         {
             _dividablePoolBuffer.SetCounterValue(0);
 
-            var kernel = compute.FindKernel("StoreDividableParticles");
+            var kernel = compute.FindKernel("CS_StoreDividableParticles");
             compute.SetBuffer(kernel, "_ParticlesRead", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_DividablePoolAppend", _dividablePoolBuffer);
 
             Dispatch1D(compute, kernel, particlesCount);
         }
+
+		private void DivideParticlesByKernel(int divideCount = 10)
+		{
+			divideCount = Mathf.Min(divideCount, GetElementsCount(_dividablePoolBuffer));
+			divideCount = Mathf.Min(divideCount, GetElementsCount(_poolBuffer));
+			if (divideCount <= 0) return;
+
+			var kernel = compute.FindKernel("CS_DivideParticles");
+			compute.SetBuffer(kernel, "_Particles", _particlesBuffer.write);
+			compute.SetBuffer(kernel, "_ParticlesRead", _particlesBuffer.read);
+			compute.SetBuffer(kernel, "_ParticlePoolConsume", _poolBuffer);
+			compute.SetBuffer(kernel, "_DividablePoolConsume", _dividablePoolBuffer);
+			compute.SetInt("_DivideCount", divideCount);
+
+			Dispatch1D(compute, kernel, divideCount);
+
+			_particlesBuffer.Swap();
+		}
 
         private void DumpParticleData()
         {
