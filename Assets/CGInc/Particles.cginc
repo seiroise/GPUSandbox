@@ -31,4 +31,11 @@ struct CGS_Particle2D
 	uint alive;
 };
 
+struct CGS_Edge2D
+{
+	int a, b;
+	float2 force;
+	uint alive;
+};
+
 #endif

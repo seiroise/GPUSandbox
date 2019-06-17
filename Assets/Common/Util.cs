@@ -65,6 +65,83 @@ namespace Seiro.GPUSandbox
         public void Swap() { var tmp = _r; _r = _w; _w = tmp; }
     }
 
+    [Serializable]
+    public class GPUObjectPoolBase : IDisposable
+    {
+        ComputeBuffer _poolBuffer;
+        public ComputeBuffer poolBuffer { get { return _poolBuffer; } }
+        ComputeBuffer _countBuffer;
+        public ComputeBuffer countBuffer { get { return _countBuffer; } }
+        int[] _countArgs = { 0, 1, 0, 0 };
+
+        public GPUObjectPoolBase(int count, Type type)
+        {
+            _poolBuffer = new ComputeBuffer(count, Marshal.SizeOf(typeof(int)), ComputeBufferType.Append);
+            _poolBuffer.SetCounterValue(0);
+            _countBuffer = new ComputeBuffer(4, Marshal.SizeOf(typeof(int)), ComputeBufferType.IndirectArguments);
+        }
+
+        public virtual void Dispose()
+        {
+            UtilFunc.ReleaseBuffer(ref _poolBuffer);
+            UtilFunc.ReleaseBuffer(ref _countBuffer);
+        }
+
+        public int GetRemainingObjectsCount()
+        {
+            _countBuffer.SetData(_countArgs);
+            ComputeBuffer.CopyCount(_poolBuffer, _countBuffer, 0);
+            _countBuffer.GetData(_countArgs);
+            return _countArgs[0];
+        }
+    }
+
+    [Serializable]
+    public sealed class GPUObjectPool : GPUObjectPoolBase
+    {
+        ComputeBuffer _objectBuffer;
+        public ComputeBuffer objectBuffer { get { return _objectBuffer; } }
+
+        public GPUObjectPool(int count, Type type) : base(count, type)
+        {
+            _objectBuffer = new ComputeBuffer(count, Marshal.SizeOf(type), ComputeBufferType.Default);
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            UtilFunc.ReleaseBuffer(ref _objectBuffer);
+            _objectBuffer = null;
+        }
+    }
+
+    [Serializable]
+    public sealed class GPUPingPongObjectPool : GPUObjectPoolBase
+    {
+        ComputeBuffer[] _buffers;
+        int _r = 0, _w = 1;
+
+        public ComputeBuffer read { get { return _buffers[_r]; } }
+        public ComputeBuffer write { get { return _buffers[_w]; } }
+
+        public GPUPingPongObjectPool(int count, Type type) : base(count, type)
+        {
+            _buffers = new ComputeBuffer[2];
+            _buffers[0] = new ComputeBuffer(count, Marshal.SizeOf(type), ComputeBufferType.Default);
+            _buffers[1] = new ComputeBuffer(count, Marshal.SizeOf(type), ComputeBufferType.Default);
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            UtilFunc.ReleaseBuffer(ref _buffers[0]);
+            UtilFunc.ReleaseBuffer(ref _buffers[1]);
+            _buffers = null;
+        }
+
+        public void Swap() { var tmp = _r; _r = _w; _w = tmp; }
+    }
+
     public static class UtilFunc
     {
         public static void ReleaseBuffer(ref ComputeBuffer buffer)
