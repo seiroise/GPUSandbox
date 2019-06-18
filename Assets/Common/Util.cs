@@ -65,8 +65,12 @@ namespace Seiro.GPUSandbox
         public void Swap() { var tmp = _r; _r = _w; _w = tmp; }
     }
 
+	/// <summary>
+	/// オブジェクトプール用の基底クラス
+	/// オブジェクトに対応するインデックスのプールとそれの数を把握するためのカウントバッファを保持。
+	/// </summary>
     [Serializable]
-    public class GPUObjectPoolBase : IDisposable
+    public abstract class GPUObjectPoolBase : IDisposable
     {
         ComputeBuffer _poolBuffer;
         public ComputeBuffer poolBuffer { get { return _poolBuffer; } }
@@ -96,7 +100,13 @@ namespace Seiro.GPUSandbox
         }
     }
 
-    [Serializable]
+	[Serializable]
+	public sealed class GPUObjectPoolCountOnly : GPUObjectPoolBase
+	{
+		public GPUObjectPoolCountOnly(int count) : base(count, typeof(int)) { }
+	}
+
+	[Serializable]
     public sealed class GPUObjectPool : GPUObjectPoolBase
     {
         ComputeBuffer _objectBuffer;

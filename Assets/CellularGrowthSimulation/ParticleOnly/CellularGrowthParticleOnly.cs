@@ -3,29 +3,8 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace Seiro.GPUSandbox.CellularGrowthSimulation
+namespace Seiro.GPUSandbox.CGS
 {
-
-    [Serializable]
-    [StructLayout(LayoutKind.Sequential)]
-    public struct CGS_Particle2D
-    {
-        public Vector2 position;    // 粒子の座標
-        public Vector2 velocity;    // 粒子の保持している速度
-        public float rudius;        // 粒子の半径
-        public float threshold;     // 粒子の最大半径
-        public int links;           // 接続しているエッジの数
-        public uint alive;          // 活性化フラグ
-    }
-
-    [Serializable]
-    [StructLayout(LayoutKind.Sequential)]
-    public struct CGS_Edge2D
-    {
-        public int a, b;            // 接続している粒子の番号
-        public Vector2 force;       // お互いを引きつけるための力
-        uint alive;                 // エッジの活性化フラグ
-    }
 
     public sealed class CellularGrowthParticleOnly : MonoBehaviour
     {
@@ -54,7 +33,6 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
         private Texture2D _pallete;
 
         private PingPongBuffer _particlesBuffer;
-        private GPUObjectPool _edges;
         private ComputeBuffer _poolBuffer, _dividablePoolBuffer;
 
         private int[] _countArgs = { 0, 1, 0, 0 };
@@ -276,20 +254,6 @@ namespace Seiro.GPUSandbox.CellularGrowthSimulation
             Dispatch1D(compute, kernel, divideCount);
 
             _particlesBuffer.Swap();
-        }
-
-        private void Divide()
-        {
-
-        }
-
-        private void StoreDividableEdges()
-        {
-            _dividablePoolBuffer.SetCounterValue(0);
-            var kernel = compute.FindKernel("CS_StoreDividableKernel");
-            compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
-            compute.SetBuffer(kernel, "_Edges", _edges.objectBuffer);
-            compute.SetBuffer(kernel, "_DividablePoolAppend", _dividablePoolBuffer);
         }
 
         private void DumpParticleData()

@@ -6,7 +6,7 @@ namespace Seiro.GPUSandbox
 {
 	public enum ParticleKind
 	{
-		NS = 0,
+		NS = 0,	// neighbor search 用
 		SPH = 1
 	}
 
