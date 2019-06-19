@@ -120,7 +120,7 @@ namespace Seiro.GPUSandbox.CGS
             compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_ParticlePoolAppend", _poolBuffer);
             compute.SetInt("_ParticlesCount", particlesCount);
-            Dispatch1D(compute, kernel, particlesCount);
+			UtilFunc.Dispatch1D(compute, kernel, particlesCount);
 
             // _particlesBuffer.Swap();
         }
@@ -144,14 +144,7 @@ namespace Seiro.GPUSandbox.CGS
             compute.SetVector("_Point", point);
             compute.SetInt("_EmitCount", emitCount);
 
-            Dispatch1D(compute, kernel, emitCount);
-        }
-
-        private void Dispatch1D(ComputeShader compute, int kernel, int size)
-        {
-            uint x, y, z;
-            compute.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
-            compute.Dispatch(kernel, Mathf.CeilToInt(size / (float)x), (int)y, (int)z);
+            UtilFunc.Dispatch1D(compute, kernel, emitCount);
         }
 
         private Vector2 GetMousePoint()
@@ -193,7 +186,7 @@ namespace Seiro.GPUSandbox.CGS
             compute.SetFloat("_Repulsion", repulsion);
             compute.SetFloat("_Grow", grow);
 
-            Dispatch1D(compute, kernel, particlesCount);
+			UtilFunc.Dispatch1D(compute, kernel, particlesCount);
 
             _particlesBuffer.Swap();
         }
@@ -235,7 +228,7 @@ namespace Seiro.GPUSandbox.CGS
             compute.SetBuffer(kernel, "_ParticlesRead", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_DividablePoolAppend", _dividablePoolBuffer);
 
-            Dispatch1D(compute, kernel, particlesCount);
+			UtilFunc.Dispatch1D(compute, kernel, particlesCount);
         }
 
         private void DivideParticlesByKernel(int divideCount = 10)
@@ -251,7 +244,7 @@ namespace Seiro.GPUSandbox.CGS
             compute.SetBuffer(kernel, "_DividablePoolConsume", _dividablePoolBuffer);
             compute.SetInt("_DivideCount", divideCount);
 
-            Dispatch1D(compute, kernel, divideCount);
+			UtilFunc.Dispatch1D(compute, kernel, divideCount);
 
             _particlesBuffer.Swap();
         }

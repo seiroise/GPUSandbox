@@ -101,9 +101,9 @@ namespace Seiro.GPUSandbox
     }
 
 	[Serializable]
-	public sealed class GPUObjectPoolCountOnly : GPUObjectPoolBase
+	public sealed class GPUIndexPool : GPUObjectPoolBase
 	{
-		public GPUObjectPoolCountOnly(int count) : base(count, typeof(int)) { }
+		public GPUIndexPool(int count) : base(count, typeof(int)) { }
 	}
 
 	[Serializable]
@@ -237,5 +237,12 @@ namespace Seiro.GPUSandbox
             tex.Apply();
             return tex;
         }
-    }
+
+		public static void Dispatch1D(ComputeShader compute, int kernel, int threads)
+		{
+			uint x, y, z;
+			compute.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
+			compute.Dispatch(kernel, Mathf.CeilToInt(threads / (float)x), (int)y, (int)z);
+		}
+	}
 }
