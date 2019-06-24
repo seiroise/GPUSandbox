@@ -59,7 +59,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Noise:
-        m_Texture: {fileID: 2800000, guid: 3685cf1387cc187419361de1ab3cc81c, type: 3}
+        m_Texture: {fileID: 2800000, guid: 4ab1c7e1cbbd644b3b0fa73e565b723c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
@@ -85,7 +85,7 @@ Material:
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
-    - _EmisScale: 4.09
+    - _EmisScale: 2.25
     - _EnableAmbientLighting: 1
     - _EnableExternalAlpha: 0
     - _GlossMapScale: 1
@@ -93,8 +93,8 @@ Material:
     - _GlossyReflections: 1
     - _Metallic: 0
     - _Mode: 0
-    - _NoiseOffset: 5.32
-    - _NoiseTimeScale: 1.64
+    - _NoiseOffset: 0.46
+    - _NoiseTimeScale: 10
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
