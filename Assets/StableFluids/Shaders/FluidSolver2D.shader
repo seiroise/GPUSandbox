@@ -40,7 +40,7 @@
 		sampler2D_float _Params;	// (x, y) : 速度場, (z) : 渦度, (w) : 圧力
 		float4 _Params_TexelSize;
 
-		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 遺留減衰
+		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 移流減衰
 
 		// 指定した座標の速度場の発散を計算
 		float div_velocity(float2 x)
@@ -220,6 +220,17 @@
 			float r2 = _Mouse.z * _Mouse.z;
 			float c = sdf_circle(d, r2);
 			return lerp(col, _MouseColor, step(c, 0));
+		}
+
+		sampler2D _InputParamsMask;		// 入力用のパラメータを適用するためのマスク。もったいないけどxの0, 1で判定する。
+		sampler2D_float _InputParams;	// 入力用のパラメータ。パラメータの配置は_Paramsと同様。
+
+		float4 frag_apply_input_params(v2f i) : SV_Target
+		{
+			fixed4 mask = tex2D(_InputParamsMask, i.uv);
+			float4 params = tex2D(_Params, i.uv);
+			float4 inParams = tex2D(_InputParams, i.uv);
+			return lerp(params, inParams, mask);			// このlerpってベクトルの要素毎に働くんだっけ？働いてくれるとすごく便利
 		}
 
 		// それぞれのパラメータの描画

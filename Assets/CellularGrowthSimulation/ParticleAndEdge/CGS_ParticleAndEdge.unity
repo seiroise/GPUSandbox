@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074, b: 0.35872698, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -113,17 +113,16 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1551074341
+--- !u!1 &1073119590
 GameObject:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   serializedVersion: 5
   m_Component:
-  - component: {fileID: 1551074345}
-  - component: {fileID: 1551074344}
-  - component: {fileID: 1551074342}
-  - component: {fileID: 1551074346}
+  - component: {fileID: 1073119594}
+  - component: {fileID: 1073119593}
+  - component: {fileID: 1073119591}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -131,23 +130,23 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1551074342
+--- !u!81 &1073119591
 AudioListener:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1551074341}
+  m_GameObject: {fileID: 1073119590}
   m_Enabled: 1
---- !u!20 &1551074344
+--- !u!20 &1073119593
 Camera:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1551074341}
+  m_GameObject: {fileID: 1073119590}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.122641504, g: 0.122641504, b: 0.122641504, a: 0}
+  m_BackGroundColor: {r: 0.13207549, g: 0.13207549, b: 0.13207549, a: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -174,55 +173,87 @@ Camera:
   m_OcclusionCulling: 0
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1551074345
+--- !u!4 &1073119594
 Transform:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1551074341}
+  m_GameObject: {fileID: 1073119590}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalPosition: {x: 0, y: 1, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1551074346
+--- !u!1 &1463880643
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 5
+  m_Component:
+  - component: {fileID: 1463880644}
+  - component: {fileID: 1463880645}
+  m_Layer: 0
+  m_Name: CGS_Simulator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1463880644
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1463880643}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1463880645
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1551074341}
+  m_GameObject: {fileID: 1463880643}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5692a2568334b4263ae0b47e550e8a6b, type: 3}
+  m_Script: {fileID: 11500000, guid: 0b80d749b55b13546bb55c8ff3817ac1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  particlesCount: 4096
-  compute: {fileID: 7200000, guid: 24d16dbf1ce66ca4ba0b33eb9aa3e812, type: 3}
+  particleCount: 2048
+  compute: {fileID: 0}
   deltaTime: 0.016
-  drag: 0.98
+  drag: 1
   limit: 1
-  repulsion: 0.3
-  grow: 0.2
-  divideInterval: 0.1
-  renderMat: {fileID: 2100000, guid: c8ec3a0bc1b654c27918fba210690637, type: 2}
-  simulationRange: {x: 10, y: 10, z: 10}
-  gradient:
+  repulsion: 1
+  spring: 1
+  grow: 1
+  maxLink: 2
+  intervalToDivide: 0.1
+  particleMat: {fileID: 0}
+  edgeMat: {fileID: 0}
+  instancingExtents: {x: 10, y: 10, z: 10}
+  pallete:
     serializedVersion: 2
-    key0: {r: 0.4948097, g: 0.7647059, b: 0.71936333, a: 1}
-    key1: {r: 0.9150943, g: 0.23740657, b: 0.3158598, a: 1}
-    key2: {r: 0.7941176, g: 0.4167483, b: 0.16933392, a: 0}
-    key3: {r: 0.43173724, g: 0.9245283, b: 0.49243405, a: 0}
-    key4: {r: 0.26649007, g: 0.34828746, b: 0.6838235, a: 0}
+    key0: {r: 1, g: 1, b: 1, a: 1}
+    key1: {r: 1, g: 1, b: 1, a: 1}
+    key2: {r: 0, g: 0, b: 0, a: 0}
+    key3: {r: 0, g: 0, b: 0, a: 0}
+    key4: {r: 0, g: 0, b: 0, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
     ctime0: 0
-    ctime1: 18975
-    ctime2: 33424
-    ctime3: 53858
-    ctime4: 65535
+    ctime1: 65535
+    ctime2: 0
+    ctime3: 0
+    ctime4: 0
     ctime5: 0
     ctime6: 0
     ctime7: 0
@@ -235,7 +266,5 @@ MonoBehaviour:
     atime6: 0
     atime7: 0
     m_Mode: 0
-    m_NumColorKeys: 5
+    m_NumColorKeys: 2
     m_NumAlphaKeys: 2
-  dumpParticles: []
-  dumpIndices: 

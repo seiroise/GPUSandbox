@@ -1,4 +1,5 @@
 ﻿#pragma kernel CS_InitParticles
+#pragma kernel CS_InitEdges
 #pragma kernel CS_EmitParticles
 #pragma kernel CS_UpdateParticles
 #pragma kernel CS_StoreDividableParticles
@@ -15,37 +16,49 @@ RWStructuredBuffer<CGS_Particle2D> _Particles;
 AppendStructuredBuffer<int> _ParticlePoolAppend;
 ConsumeStructuredBuffer<int> _ParticlePoolConsume;
 
+RWStructuredBuffer<CGS_Edge2D> _Edges;
+AppendStructuredBuffer<int> _EdgePoolAppend;
+ConsumeStructuredBuffer<int> _EdgePoolConsume;
+
 AppendStructuredBuffer<int> _DividablePoolAppend;
 ConsumeStructuredBuffer<int> _DividablePoolConsume;
 
 uint _ParticlesCount;
 float _DT;
 
-CGS_Particle2D CreateParticle2D()
+void CreateParticle2D(out CGS_Particle2D p)
 {
-	CGS_Particle2D p;
 	p.position = float2(0, 0);
 	p.velocity = float2(0, 0);
 	p.radius = p.threshold = 1;
 	p.links = 0;
 	p.alive = true;
-	return p;
 }
 
 THREADS
 void CS_InitParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
-	
 	if(idx >= _ParticlesCount) return;
 
-	CGS_Particle2D p = CreateParticle2D();
+	CGS_Particle2D p;
+	CreateParticle2D(p);
 	p.alive = false;
 	_Particles[idx] = p;
 	_ParticlePoolAppend.Append(idx);
 }
 
-float2 _Point;
+THREADS
+void CS_InitEdges(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+	if(idx >= _ParticlesCount) return;
+
+	_Edges[idx].alive = false;
+	_EdgePoolAppend.Append(idx);
+}
+
+float2 _EmitPoint;
 int _EmitCount;
 
 THREADS
@@ -57,8 +70,8 @@ void CS_EmitParticles(uint3 id : SV_DispatchThreadID)
 	uint idx = _ParticlePoolConsume.Consume();
 
 	CGS_Particle2D p = _Particles[idx];
-	float2 offset = random_point_on_unit_circle(_Point + idx);
-	p.position = _Point + offset;
+	float2 offset = random_point_on_unit_circle(_EmitPoint + idx);
+	p.position = _EmitPoint + offset;
 	p.radius = hash12_sin(p.position + idx);
 	p.alive = true;
 	_Particles[idx] = p;
@@ -127,7 +140,8 @@ bool IsDividableParticle(in CGS_Particle2D p)
 uint DivideParticle(uint idx, float2 offset)
 {
 	CGS_Particle2D parent = _ParticlesRead[idx];
-	CGS_Particle2D child = CreateParticle2D();
+	CGS_Particle2D child;
+	CreateParticle2D(child);
 
 	// 分裂することになるので半径を半分にする。
 	// つまり、質量が保存されていない。
@@ -141,7 +155,7 @@ uint DivideParticle(uint idx, float2 offset)
 
 	// 成長の限度を設定
 	float x = hash12_sin(parent.position);
-	child.threshold = x + hr;
+	child.threshold = x * 2. + hr;
 
 	// 子を更新
 	uint cidx = _ParticlePoolConsume.Consume();

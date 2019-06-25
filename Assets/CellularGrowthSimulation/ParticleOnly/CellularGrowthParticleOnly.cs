@@ -141,7 +141,7 @@ namespace Seiro.GPUSandbox.CGS
             var kernel = compute.FindKernel("CS_EmitParticles");
             compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_ParticlePoolConsume", _poolBuffer);
-            compute.SetVector("_Point", point);
+            compute.SetVector("_EmitPoint", point);
             compute.SetInt("_EmitCount", emitCount);
 
             UtilFunc.Dispatch1D(compute, kernel, emitCount);

@@ -38,20 +38,32 @@ namespace Seiro.GPUSandbox.CGS
 
 		private void OnEnable()
 		{
-			
+			BindResources();
 		}
 		
 		private void OnDisable()
 		{
+			ReleaseResources();
+		}
+
+		private void Update()
+		{
 			
 		}
 
+		/// <summary>
+		/// 各種リソースの確保
+		/// </summary>
 		private void BindResources()
 		{
 			// 各種プールの初期化
 			_particle = new GPUPingPongObjectPool(particleCount, typeof(CGS_Particle2D));
 			_edge = new GPUObjectPool(particleCount, typeof(CGS_Edge2D));
 			_dividablePool = new GPUIndexPool(particleCount);
+
+			// 各種オブジェクトの初期化
+			InitParticles();
+			InitEdges();
 
 			// インスタンシングの用意
 			_particleMesh = UtilFunc.BuildQuad();
@@ -61,10 +73,22 @@ namespace Seiro.GPUSandbox.CGS
 			_instancingArgsBuffer.SetData(_instancingArgs);
 			_palleteTex = UtilFunc.CreatePallete(pallete, 128);
 			particleMat.SetTexture("_Pallete", _palleteTex);
-
-
 		}
 
+		/// <summary>
+		/// 各種リソースの開放
+		/// </summary>
+		private void ReleaseResources()
+		{
+			if (_particle != null) { _particle.Dispose(); _particle = null; }
+			if (_edge != null) { _edge.Dispose(); _edge = null; }
+			if (_dividablePool != null) { _dividablePool.Dispose(); _dividablePool = null; }
+			UtilFunc.ReleaseBuffer(ref _instancingArgsBuffer);
+		}
+
+		/// <summary>
+		/// パーティクルの初期化
+		/// </summary>
 		private void InitParticles()
 		{
 			var kernel = compute.FindKernel("CS_InitParticles");
@@ -73,11 +97,45 @@ namespace Seiro.GPUSandbox.CGS
 			UtilFunc.Dispatch1D(compute, kernel, particleCount);
 		}
 
+		/// <summary>
+		/// エッジの初期化
+		/// </summary>
 		private void InitEdges()
 		{
 			var kernel = compute.FindKernel("CS_InitEdges");
 			compute.SetBuffer(kernel, "_Edges", _edge.objectBuffer);
 			compute.SetBuffer(kernel, "_EdgePoolAppend", _edge.poolBuffer);
+			UtilFunc.Dispatch1D(compute, kernel, particleCount);
+		}
+
+		/// <summary>
+		/// マウスのワールド座標を取得
+		/// </summary>
+		/// <returns></returns>
+		private Vector2 GetMousePoint()
+		{
+			Vector2 p = Input.mousePosition;
+			Vector3 w = Camera.main.ScreenToWorldPoint(new Vector3(p.x, p.y, -Camera.main.transform.position.z));
+			// Vector3 l = transform.InverseTransformPoint(w);
+			return new Vector2(w.x, w.y);
+		}
+
+		/// <summary>
+		/// パーティクルの生成
+		/// </summary>
+		/// <param name="point"></param>
+		/// <param name="emitCount"></param>
+		private void EmitParticles(Vector2 point, int emitCount = 8)
+		{
+			emitCount = Mathf.Min(emitCount, _particle.GetRemainingObjectsCount());
+			if (emitCount <= 0) return;
+
+			var kernel = compute.FindKernel("CS_EmitParticles");
+			compute.SetBuffer(kernel, "_Particles", _particle.write);
+			compute.SetBuffer(kernel, "_ParticlePoolConsume", _particle.poolBuffer);
+			compute.SetVector("_EmitPoint", point);
+			compute.SetInt("_EmitCount", emitCount);
+			UtilFunc.Dispatch1D(compute, kernel, emitCount);
 		}
 	}
 }
