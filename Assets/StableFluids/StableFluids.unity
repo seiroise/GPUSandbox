@@ -216,10 +216,10 @@ MonoBehaviour:
   iterations: 4
   vorticityCoef: 0.3
   viscosityCoef: 3.05
-  velocityAdvectionDecay: 0.998
+  velocityAdvectionDecay: 0.98
   mouse: 2
   mouseRadius: 0.01
-  mouseForce: 0.1
+  mouseForce: 1
   mouseForceDir: {x: 0, y: 1}
   autoMouseColor: 1
   mouseColorPallet:
@@ -280,7 +280,7 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
-  orthographic: 0
+  orthographic: 1
   orthographic size: 5
   m_Depth: -1
   m_CullingMask:
@@ -406,6 +406,26 @@ Prefab:
         type: 2}
       propertyPath: m_Pivot.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 224123703068897072, guid: 3cb56ae8d414847b89e700a36e52a004,
+        type: 2}
+      propertyPath: m_SizeDelta.x
+      value: 200
+      objectReference: {fileID: 0}
+    - target: {fileID: 224123703068897072, guid: 3cb56ae8d414847b89e700a36e52a004,
+        type: 2}
+      propertyPath: m_SizeDelta.y
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 114531927478647390, guid: 3cb56ae8d414847b89e700a36e52a004,
+        type: 2}
+      propertyPath: m_FontData.m_FontSize
+      value: 60
+      objectReference: {fileID: 0}
+    - target: {fileID: 114531927478647390, guid: 3cb56ae8d414847b89e700a36e52a004,
+        type: 2}
+      propertyPath: m_FontData.m_MaxSize
+      value: 60
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 3cb56ae8d414847b89e700a36e52a004, type: 2}
