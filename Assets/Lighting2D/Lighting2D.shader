@@ -2,8 +2,8 @@
 {
 	Properties
 	{
-		[PreRendererData] _MainTex ("Main", 2D) = "white" {}
-		[PreRendererData] _BaseColor ("Base color", 2D) = "white" {}
+		[PerRendererData] _MainTex ("Main", 2D) = "white" {}
+		[PerRendererData] _BaseColor ("Base color", 2D) = "white" {}
 		[PreRendererData] _Substance ("Substance", 2D) = "white" {}
 		[PreRendererData] _DistanceField ("Distance field", 2D) = "white" {}
 		[PreRendererData] _PrevLighting ("Prev Lighting", 2D) = "white" {}
@@ -23,8 +23,8 @@
 
 		CGINCLUDE
 
-		#define MAX_MARCHING_STEP 16
-		#define RAYS_PER_PIXEL 8
+		#define MAX_MARCHING_STEP 32
+		#define RAYS_PER_PIXEL 128
 		
 		#define DISTANCE_EPSILON 1e-4
 		#define EMISSION_EPSILON 1e-2
@@ -217,13 +217,14 @@
 					float2 hitPos = float2(0, 0);
 					float d = 0.;
 
-					// float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand), sin(i / RAYS_PER_PIXEL * 2. * PI + rand));
-					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand * 4.256), sin(i / RAYS_PER_PIXEL * 2. * PI + rand * 4.256));
+					float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand), sin(i / RAYS_PER_PIXEL * 2. * PI + rand));
+					// float2 ray = float2(cos(i / RAYS_PER_PIXEL * 2. * PI + rand * 4.256), sin(i / RAYS_PER_PIXEL * 2. * PI + rand * 4.256));
 
 					if(trace(origin, ray, hitPos, d))
 					{
 						float3 baseColor = tex2D(_BaseColor, hitPos).xyz;
 						float4 material = tex2D(_Substance, hitPos);
+						material.x *= 4.;
 						float lastEmimssion = 0.;
 
 						if(material.x < EPSILON && d > EPSILON)
