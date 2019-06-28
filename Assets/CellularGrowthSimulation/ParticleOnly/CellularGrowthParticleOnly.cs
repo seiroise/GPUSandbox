@@ -119,7 +119,7 @@ namespace Seiro.GPUSandbox.CGS
             var kernel = compute.FindKernel("CS_InitParticles");
             compute.SetBuffer(kernel, "_Particles", _particlesBuffer.read);
             compute.SetBuffer(kernel, "_ParticlePoolAppend", _poolBuffer);
-            compute.SetInt("_ParticlesCount", particlesCount);
+            compute.SetInt("_ParticleCount", particlesCount);
 			UtilFunc.Dispatch1D(compute, kernel, particlesCount);
 
             // _particlesBuffer.Swap();

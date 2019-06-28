@@ -48,7 +48,11 @@ namespace Seiro.GPUSandbox.CGS
 
 		private void Update()
 		{
-			
+			if (Input.GetMouseButton(0))
+			{
+				EmitParticles(GetMousePoint());
+			}
+			RenderParticles();
 		}
 
 		/// <summary>
@@ -93,7 +97,8 @@ namespace Seiro.GPUSandbox.CGS
 		{
 			var kernel = compute.FindKernel("CS_InitParticles");
 			compute.SetBuffer(kernel, "_Particles", _particle.read);
-			compute.SetBuffer(kernel, "_ParticlePoolAppend", _particle.countBuffer);
+			compute.SetBuffer(kernel, "_ParticlePoolAppend", _particle.poolBuffer);
+			compute.SetInt("_ParticleCount", particleCount);
 			UtilFunc.Dispatch1D(compute, kernel, particleCount);
 		}
 
@@ -105,6 +110,7 @@ namespace Seiro.GPUSandbox.CGS
 			var kernel = compute.FindKernel("CS_InitEdges");
 			compute.SetBuffer(kernel, "_Edges", _edge.objectBuffer);
 			compute.SetBuffer(kernel, "_EdgePoolAppend", _edge.poolBuffer);
+			compute.SetInt("_EdgeCount", particleCount);
 			UtilFunc.Dispatch1D(compute, kernel, particleCount);
 		}
 
@@ -136,6 +142,22 @@ namespace Seiro.GPUSandbox.CGS
 			compute.SetVector("_EmitPoint", point);
 			compute.SetInt("_EmitCount", emitCount);
 			UtilFunc.Dispatch1D(compute, kernel, emitCount);
+		}
+
+		/// <summary>
+		/// パーティクルの描画
+		/// </summary>
+		private void RenderParticles()
+		{
+			if (_particleMesh == null || particleMat == null)
+			{
+				return;
+			}
+
+			particleMat.SetPass(0);
+			particleMat.SetBuffer("buf", _particle.read);
+			particleMat.SetTexture("_Pallete", _palleteTex);
+			Graphics.DrawMeshInstancedIndirect(_particleMesh, 0, particleMat, new Bounds(transform.position, instancingExtents), _instancingArgsBuffer);
 		}
 	}
 }

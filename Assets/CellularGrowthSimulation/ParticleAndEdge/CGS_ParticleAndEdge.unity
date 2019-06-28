@@ -227,7 +227,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   particleCount: 2048
-  compute: {fileID: 0}
+  compute: {fileID: 7200000, guid: 24d16dbf1ce66ca4ba0b33eb9aa3e812, type: 3}
   deltaTime: 0.016
   drag: 1
   limit: 1
@@ -236,24 +236,24 @@ MonoBehaviour:
   grow: 1
   maxLink: 2
   intervalToDivide: 0.1
-  particleMat: {fileID: 0}
+  particleMat: {fileID: 2100000, guid: c8ec3a0bc1b654c27918fba210690637, type: 2}
   edgeMat: {fileID: 0}
   instancingExtents: {x: 10, y: 10, z: 10}
   pallete:
     serializedVersion: 2
-    key0: {r: 1, g: 1, b: 1, a: 1}
-    key1: {r: 1, g: 1, b: 1, a: 1}
-    key2: {r: 0, g: 0, b: 0, a: 0}
-    key3: {r: 0, g: 0, b: 0, a: 0}
-    key4: {r: 0, g: 0, b: 0, a: 0}
+    key0: {r: 0.4948097, g: 0.7647059, b: 0.71936333, a: 1}
+    key1: {r: 0.9150943, g: 0.23740657, b: 0.3158598, a: 1}
+    key2: {r: 0.7941176, g: 0.4167483, b: 0.16933392, a: 0}
+    key3: {r: 0.43173724, g: 0.9245283, b: 0.49243405, a: 0}
+    key4: {r: 0.26649007, g: 0.34828746, b: 0.6838235, a: 0}
     key5: {r: 0, g: 0, b: 0, a: 0}
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
     ctime0: 0
-    ctime1: 65535
-    ctime2: 0
-    ctime3: 0
-    ctime4: 0
+    ctime1: 18975
+    ctime2: 33424
+    ctime3: 53858
+    ctime4: 65535
     ctime5: 0
     ctime6: 0
     ctime7: 0
@@ -266,5 +266,5 @@ MonoBehaviour:
     atime6: 0
     atime7: 0
     m_Mode: 0
-    m_NumColorKeys: 2
+    m_NumColorKeys: 5
     m_NumAlphaKeys: 2
