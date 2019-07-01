@@ -4,6 +4,9 @@
 #pragma kernel CS_UpdateParticles
 #pragma kernel CS_StoreDividableParticles
 #pragma kernel CS_DivideParticles
+#pragma kernel CS_StoreDividableEdges
+#pragma kernel CS_DivideUnconnectedParticles
+#pragma kernel CS_DivideEdgesClosed
 
 #include "Assets/CGInc/Particles.cginc"
 #include "Assets/CGInc/Random.cginc"
@@ -205,7 +208,7 @@ bool IsDividableEdge(in CGS_Edge2D e)
 {
 	CGS_Particle2D pa = _Particles[e.a];
 	CGS_Particle2D pb = _Particles[e.b];
-	return pa.links < _MaxLink && pb.links < _MaxLink && IsDividableParticle(pa) && IsDividableParticle(pb);
+	return pa.links < _MaxLinks && pb.links < _MaxLinks && IsDividableParticle(pa) && IsDividableParticle(pb);
 }
 
 THREADS
@@ -220,4 +223,76 @@ void CS_StoreDividableEdges(uint3 id : SV_DispatchThreadID)
 		// 分割プールにインデックスを追加する
 		_DividablePoolAppend.Append(idx);
 	}
+}
+
+// edgeプールから取り出して2つのパーティクルをエッジでつなぐ
+void Connect(uint a, uint b)
+{
+	uint eidx = _EdgePoolConsume.Consume();
+
+	InterlockedAdd(_Particles[a].links, 1);
+	InterlockedAdd(_Particles[b].links, 1);
+
+	CGS_Edge2D e;
+	e.a = a;
+	e.b = b;
+	e.force = float2(0, 0);
+	e.alive = true;
+	_Edges[eidx] = e;
+}
+
+THREADS
+void CS_DivideUnconnectedParticles(uint3 id : SV_DispatchThreadID)
+{
+	uint idx = id.x;
+	if(idx >= _ParticleCount) return;
+
+	// 活性化していて、他のパーティクルとはリンクを作っていないようなパーティクルを選ぶ。
+	CGS_Particle2D p = _ParticlesRead[idx];
+	if(!p.alive || p.links > 0)	return;
+
+	// 分裂させる
+	uint cidx = DivideParticle(idx);
+
+	// 分裂させた親と子をつなぐ
+	Connect(idx, cidx);
+}
+
+void DivideEdgeClosed(uint idx)
+{
+	CGS_Edge2D e = _Edges[idx];
+	
+	CGS_Particle2D pa = _Particles[e.a];
+	CGS_Particle2D pb = _Particles[e.b];
+
+	if(pa.links == 1 || pb.links == 1)
+	{
+		// 3つのパーティクルで三角形を作るように分割して、エッジでつなぐ。
+		uint cidx = DivideParticle(e.a);
+		Connect(e.a, cidx);
+		Connect(cidx, e.b);
+	}
+	else
+	{
+		float2 dir = pb.position - pa.position;
+		float2 offset = normalize(dir) * pa.radius * .25;
+		uint cidx = DivideParticle(e.a, offset);
+		Connect(e.a, cidx);
+
+		// もとのEdgeを新しく生成したパーティクルを接続するようにつなぎ直す。
+		InterlockedAdd(_Particles[e.a].links, -1);
+		InterlockedAdd(_Particles[cidx].links, 1);
+
+		e.a = cidx;
+	}
+	_Edges[idx] = e;
+}
+
+THREADS
+void CS_DivideEdgesClosed(uint3 id : SV_DispatchThreadID)
+{
+	if(id.x >= _DivideCount) return;
+
+	uint idx = _DividablePoolConsume.Consume();
+	DivideEdgeClosed(idx);
 }
