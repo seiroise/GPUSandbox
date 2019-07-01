@@ -23,7 +23,7 @@ ConsumeStructuredBuffer<int> _EdgePoolConsume;
 AppendStructuredBuffer<int> _DividablePoolAppend;
 ConsumeStructuredBuffer<int> _DividablePoolConsume;
 
-uint _ParticlesCount;
+uint _ParticleCount;
 float _DT;
 
 void CreateParticle2D(out CGS_Particle2D p)
@@ -39,7 +39,7 @@ THREADS
 void CS_InitParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
-	if(idx >= _ParticlesCount) return;
+	if(idx >= _ParticleCount) return;
 
 	CGS_Particle2D p;
 	CreateParticle2D(p);
@@ -52,19 +52,19 @@ THREADS
 void CS_InitEdges(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
-	if(idx >= _ParticlesCount) return;
+	if(idx >= _ParticleCount) return;
 
 	_Edges[idx].alive = false;
 	_EdgePoolAppend.Append(idx);
 }
 
 float2 _EmitPoint;
-int _EmitCount;
+uint _EmitCount;
 
 THREADS
 void CS_EmitParticles(uint3 id : SV_DispatchThreadID)
 {
-	if(id.x >= (uint)_EmitCount) return;
+	if(id.x >= _EmitCount) return;
 
 	// これきちんとブロックされるのかな？
 	uint idx = _ParticlePoolConsume.Consume();
@@ -77,16 +77,16 @@ void CS_EmitParticles(uint3 id : SV_DispatchThreadID)
 	_Particles[idx] = p;
 }
 
-float _Drag;
-float _Limit;
-float _Repulsion;
-float _Grow;
+float _Drag;		// パーティクルの疑似速度抵抗
+float _Limit;		// パーティクルの限界速度
+float _Repulsion;	// パーティクル同士の反発力の係数
+float _Grow;		// パーティクルの成長係数
 
 THREADS
 void CS_UpdateParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
-	if(idx >= _ParticlesCount) return;
+	if(idx >= _ParticleCount) return;
 
 	// パーティクルのデータを読み込み用ハッファから
 	CGS_Particle2D p = _ParticlesRead[idx];
@@ -99,7 +99,7 @@ void CS_UpdateParticles(uint3 id : SV_DispatchThreadID)
 
 		// パーティクル同士の反発
 		// ここの判定はBitonicSortに変更すれば、早くなる。どのくらい早くなるのかはわからないけど。
-		for(uint i = 0; i < _ParticlesCount; ++i)
+		for(uint i = 0; i < _ParticleCount; ++i)
 		{
 			CGS_Particle2D other = _ParticlesRead[i];
 			if(i == idx || !other.alive) continue;
@@ -178,7 +178,7 @@ THREADS
 void CS_StoreDividableParticles(uint3 id : SV_DispatchThreadID)
 {
 	uint idx = id.x;
-	if(idx >= _ParticlesCount) return;
+	if(idx >= _ParticleCount) return;
 
 	CGS_Particle2D p = _ParticlesRead[idx];
 	if(p.alive && IsDividableParticle(p))
@@ -199,8 +199,25 @@ void CS_DivideParticles(uint3 id : SV_DispatchThreadID)
 	DivideParticle(idx);
 }
 
+int _MaxLinks;	// パーティクル間エッジの最大数
+
+bool IsDividableEdge(in CGS_Edge2D e)
+{
+	CGS_Particle2D pa = _Particles[e.a];
+	CGS_Particle2D pb = _Particles[e.b];
+	return pa.links < _MaxLink && pb.links < _MaxLink && IsDividableParticle(pa) && IsDividableParticle(pb);
+}
+
 THREADS
 void CS_StoreDividableEdges(uint3 id : SV_DispatchThreadID)
 {
-	
+	uint idx = id.x;
+	if(idx >= _ParticleCount) return;
+
+	CGS_Edge2D e = _Edges[idx];
+	if (e.alive && IsDividableEdge(e))
+	{
+		// 分割プールにインデックスを追加する
+		_DividablePoolAppend.Append(idx);
+	}
 }
