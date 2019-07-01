@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Collections;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Seiro.GPUSandbox.CGS
@@ -11,13 +12,13 @@ namespace Seiro.GPUSandbox.CGS
 		[Space]
 
 		public float deltaTime = 0.016f;		// シミュレーションの1ステップあたりに経過する時間
-		public float drag = 1f;					// パーティクルの速度の減衰割合
-		public float limit = 1f;                // パーティクルの持つ速度の最大値
+		public float velocityDrag = .9f;		// パーティクルの速度の減衰割合
+		public float velocityLimit = 1f;		// パーティクルの持つ速度の最大値
 		public float repulsion = 1f;            // パーティクル同士の反発力の係数
 		public float spring = 1f;				// エッジの持つ距離を保とうとする力の係数
 		public float grow = 1f;                 // パーティクルの成長速度
 		public int maxLink = 2;					// 一つのパーティクルが持つエッジの最大数
-		public float intervalToDivide = 0.1f;   // パーティクルの分割判定を行う間隔
+		public float dividingInterval = 0.1f;   // パーティクルの分割判定を行う間隔
 
 		[Space]
 
@@ -26,24 +27,29 @@ namespace Seiro.GPUSandbox.CGS
 		public Vector3 instancingExtents = new Vector3(10f, 10f, 10f);	// instancing描画用の範囲
 		public Gradient pallete;                                        // パーティクル描画用のパレット
 
-		private GPUPingPongObjectPool _particle = null;					// パーティクルのオブジェクトプール(ダブルバッファ
-		private GPUObjectPool _edge = null;								// エッジのオブジェクトプール(シングルバッファ
+		private GPUPingPongObjectPool _particles = null;				// パーティクルのオブジェクトプール(ダブルバッファ
+		private GPUObjectPool _edges = null;							// エッジのオブジェクトプール(シングルバッファ
 		private GPUIndexPool _dividablePool = null;						// 分裂するオブジェクト(パーティクル、エッジ)のインデックスプール
 
 		private Mesh _particleMesh = null;                              // パーティクルのインスタンシング描画に使用するメッシュ
 		private Mesh _edgeMesh = null;									// エッジのインスタンシング描画に使用するメッシュ
 		private uint[] _instancingArgs = { 0, 0, 0, 0, 0 };				// インスタンシング用の引数
 		private ComputeBuffer _instancingArgsBuffer = null;             // インスタンシング用の引数を設定するバッファ
-		private Texture2D _palleteTex = null;							// パレットをテクスチャに変換したもの
+		private Texture2D _palleteTex = null;                           // パレットをテクスチャに変換したもの
+
+		private CGS_Particle2D[] _dumpedParticles;		// デバッグ用にダンプされたComputeBufferの値
+		private CGS_Edge2D[] _dumpedEdges;				// デバッグ用にダンプされたComputeBufferの値
 
 		private void OnEnable()
 		{
 			BindResources();
+			StartCoroutine(ProcessDividing());
 		}
 		
 		private void OnDisable()
 		{
 			ReleaseResources();
+			StopAllCoroutines();
 		}
 
 		private void Update()
@@ -52,7 +58,22 @@ namespace Seiro.GPUSandbox.CGS
 			{
 				EmitParticles(GetMousePoint());
 			}
+			if (Input.GetKeyDown(KeyCode.Space))
+			{
+				DumpGPUBuffer();
+			}
+
+			UpdateParticles();
 			RenderParticles();
+		}
+
+		private IEnumerator ProcessDividing()
+		{
+			while (true)
+			{
+				DivideParticles();
+				yield return new WaitForSeconds(dividingInterval);
+			}
 		}
 
 		/// <summary>
@@ -61,8 +82,8 @@ namespace Seiro.GPUSandbox.CGS
 		private void BindResources()
 		{
 			// 各種プールの初期化
-			_particle = new GPUPingPongObjectPool(particleCount, typeof(CGS_Particle2D));
-			_edge = new GPUObjectPool(particleCount, typeof(CGS_Edge2D));
+			_particles = new GPUPingPongObjectPool(particleCount, typeof(CGS_Particle2D));
+			_edges = new GPUObjectPool(particleCount, typeof(CGS_Edge2D));
 			_dividablePool = new GPUIndexPool(particleCount);
 
 			// 各種オブジェクトの初期化
@@ -84,8 +105,8 @@ namespace Seiro.GPUSandbox.CGS
 		/// </summary>
 		private void ReleaseResources()
 		{
-			if (_particle != null) { _particle.Dispose(); _particle = null; }
-			if (_edge != null) { _edge.Dispose(); _edge = null; }
+			if (_particles != null) { _particles.Dispose(); _particles = null; }
+			if (_edges != null) { _edges.Dispose(); _edges = null; }
 			if (_dividablePool != null) { _dividablePool.Dispose(); _dividablePool = null; }
 			UtilFunc.ReleaseBuffer(ref _instancingArgsBuffer);
 		}
@@ -96,8 +117,8 @@ namespace Seiro.GPUSandbox.CGS
 		private void InitParticles()
 		{
 			var kernel = compute.FindKernel("CS_InitParticles");
-			compute.SetBuffer(kernel, "_Particles", _particle.read);
-			compute.SetBuffer(kernel, "_ParticlePoolAppend", _particle.poolBuffer);
+			compute.SetBuffer(kernel, "_Particles", _particles.read);
+			compute.SetBuffer(kernel, "_ParticlePoolAppend", _particles.poolBuffer);
 			compute.SetInt("_ParticleCount", particleCount);
 			UtilFunc.Dispatch1D(compute, kernel, particleCount);
 		}
@@ -108,8 +129,8 @@ namespace Seiro.GPUSandbox.CGS
 		private void InitEdges()
 		{
 			var kernel = compute.FindKernel("CS_InitEdges");
-			compute.SetBuffer(kernel, "_Edges", _edge.objectBuffer);
-			compute.SetBuffer(kernel, "_EdgePoolAppend", _edge.poolBuffer);
+			compute.SetBuffer(kernel, "_Edges", _edges.objectBuffer);
+			compute.SetBuffer(kernel, "_EdgePoolAppend", _edges.poolBuffer);
 			compute.SetInt("_EdgeCount", particleCount);
 			UtilFunc.Dispatch1D(compute, kernel, particleCount);
 		}
@@ -133,15 +154,38 @@ namespace Seiro.GPUSandbox.CGS
 		/// <param name="emitCount"></param>
 		private void EmitParticles(Vector2 point, int emitCount = 8)
 		{
-			emitCount = Mathf.Min(emitCount, _particle.GetRemainingObjectsCount());
+			emitCount = Mathf.Min(emitCount, _particles.GetRemainingObjectsCount());
 			if (emitCount <= 0) return;
 
 			var kernel = compute.FindKernel("CS_EmitParticles");
-			compute.SetBuffer(kernel, "_Particles", _particle.write);
-			compute.SetBuffer(kernel, "_ParticlePoolConsume", _particle.poolBuffer);
+			compute.SetBuffer(kernel, "_Particles", _particles.read);
+			compute.SetBuffer(kernel, "_ParticlePoolConsume", _particles.poolBuffer);
 			compute.SetVector("_EmitPoint", point);
 			compute.SetInt("_EmitCount", emitCount);
+
 			UtilFunc.Dispatch1D(compute, kernel, emitCount);
+		}
+
+		/// <summary>
+		/// パーティクルを更新する
+		/// </summary>
+		private void UpdateParticles()
+		{
+			if (compute == null) return;
+			int kernel = compute.FindKernel("CS_UpdateParticles");
+
+			compute.SetBuffer(kernel, "_ParticlesRead", _particles.read);
+			compute.SetBuffer(kernel, "_Particles", _particles.write);
+
+			compute.SetFloat("_DT", deltaTime);
+			compute.SetFloat("_Drag", velocityDrag);
+			compute.SetFloat("_Limit", velocityLimit);
+			compute.SetFloat("_Repulsion", repulsion);
+			compute.SetFloat("_Grow", grow);
+
+			UtilFunc.Dispatch1D(compute, kernel, particleCount);
+
+			_particles.Swap();
 		}
 
 		/// <summary>
@@ -155,9 +199,92 @@ namespace Seiro.GPUSandbox.CGS
 			}
 
 			particleMat.SetPass(0);
-			particleMat.SetBuffer("buf", _particle.read);
+			particleMat.SetBuffer("buf", _particles.read);
 			particleMat.SetTexture("_Pallete", _palleteTex);
 			Graphics.DrawMeshInstancedIndirect(_particleMesh, 0, particleMat, new Bounds(transform.position, instancingExtents), _instancingArgsBuffer);
+		}
+
+		// Dividing Particles
+
+		/// <summary>
+		/// パーティクルの分割処理
+		/// </summary>
+		private void DivideParticles()
+		{
+			StoreDividableParticles();
+			ProcessDividingParticles();
+		}
+
+		/// <summary>
+		/// 分割可能なパーティクルの保持
+		/// </summary>
+		private void StoreDividableParticles()
+		{
+			_dividablePool.poolBuffer.SetCounterValue(0);
+
+			var kernel = compute.FindKernel("CS_StoreDividableParticles");
+			compute.SetBuffer(kernel, "_ParticlesRead", _particles.read);
+			compute.SetBuffer(kernel, "_DividablePoolAppend", _dividablePool.poolBuffer);
+
+			UtilFunc.Dispatch1D(compute, kernel, particleCount);
+		}
+
+		/// <summary>
+		/// 分割可能なパーティクルの分割処理
+		/// </summary>
+		private void ProcessDividingParticles(int divideCount = 4)
+		{
+			divideCount = Mathf.Min(divideCount, _dividablePool.GetRemainingObjectsCount());
+			if (divideCount <= 0) return;
+
+			var kernel = compute.FindKernel("CS_DivideParticles");
+			compute.SetBuffer(kernel, "_Particles", _particles.write);
+			compute.SetBuffer(kernel, "_ParticlesRead", _particles.read);
+			compute.SetBuffer(kernel, "_ParticlePoolConsume", _particles.poolBuffer);
+			compute.SetBuffer(kernel, "_DividablePoolConsume", _dividablePool.poolBuffer);
+			compute.SetInt("_DivideCount", divideCount);
+
+			UtilFunc.Dispatch1D(compute, kernel, divideCount);
+
+			_particles.Swap();
+		}
+
+		// Dividing Edges
+
+		/// <summary>
+		/// エッジの分割処理
+		/// </summary>
+		private void DivideEdges()
+		{
+			StoreDividableEdges();
+		}
+
+		/// <summary>
+		/// 分裂可能なエッジの保持
+		/// </summary>
+		private void StoreDividableEdges()
+		{
+
+		}
+
+		// Debug
+
+		/// <summary>
+		/// ComputeBufferのデータをcpu内の配列に確保する。
+		/// </summary>
+		private void DumpGPUBuffer()
+		{
+			if (_dumpedParticles == null || _dumpedParticles.Length != _particles.read.count)
+			{
+				_dumpedParticles = new CGS_Particle2D[_particles.read.count];
+			}
+			if (_dumpedEdges == null || _dumpedEdges.Length != _edges.objectBuffer.count)
+			{
+				_dumpedEdges = new CGS_Edge2D[_edges.objectBuffer.count];
+			}
+
+			_particles.read.GetData(_dumpedParticles);
+			_edges.objectBuffer.GetData(_dumpedEdges);
 		}
 	}
 }

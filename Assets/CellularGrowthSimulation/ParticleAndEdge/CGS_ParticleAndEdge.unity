@@ -229,13 +229,13 @@ MonoBehaviour:
   particleCount: 2048
   compute: {fileID: 7200000, guid: 24d16dbf1ce66ca4ba0b33eb9aa3e812, type: 3}
   deltaTime: 0.016
-  drag: 1
-  limit: 1
-  repulsion: 1
+  velocityDrag: 0.9
+  velocityLimit: 1
+  repulsion: 0.5
   spring: 1
   grow: 1
   maxLink: 2
-  intervalToDivide: 0.1
+  dividingInterval: 0.5
   particleMat: {fileID: 2100000, guid: c8ec3a0bc1b654c27918fba210690637, type: 2}
   edgeMat: {fileID: 0}
   instancingExtents: {x: 10, y: 10, z: 10}
