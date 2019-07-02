@@ -46,7 +46,7 @@ Shader "Custom/CGS2D_InstancingParticle"
 			o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
 			float u = hash12_sin(float2(id, 0));
-			o.col = tex2Dlod(_Pallete, float4(u, 0, 0, 0));	// tex2Dlodのwはlodの指定。忘れないように。
+			o.col = tex2Dlod(_Pallete, float4(u, 0, 0, 0));	// vertex shader時点ではdepthのソートが行われる前段階なのでlodが計算されていない。tex2Dlodのwはlodの指定。忘れないように。
 			return o;
 		}
 

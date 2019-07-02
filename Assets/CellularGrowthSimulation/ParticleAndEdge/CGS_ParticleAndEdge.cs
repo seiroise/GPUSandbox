@@ -17,8 +17,11 @@ namespace Seiro.GPUSandbox.CGS
         public float repulsion = 1f;            // パーティクル同士の反発力の係数
         public float spring = 1f;               // エッジの持つ距離を保とうとする力の係数
         public float grow = 1f;                 // パーティクルの成長速度
-        public int maxLinks = 2;                 // 一つのパーティクルが持つエッジの最大数
+        public int maxLinks = 2;                // 一つのパーティクルが持つエッジの最大数
         public float dividingInterval = 0.1f;   // パーティクルの分割判定を行う間隔
+		public int emitParticleCount = 2;       // マウス操作で生成されるパーティクル量
+		public int maxDivideParticleCount = 2;  // 分裂処理時にパーティクルを分割できる最大数
+		public int maxDivideEdgeCount = 2;		// 分裂処理時にエッジを分割できる最大数
 
         [Space]
 
@@ -56,7 +59,7 @@ namespace Seiro.GPUSandbox.CGS
         {
             if (Input.GetMouseButton(0))
             {
-                EmitParticles(GetMousePoint());
+                EmitParticles(GetMousePoint(), emitParticleCount);
             }
             if (Input.GetKeyDown(KeyCode.Space))
             {
@@ -64,7 +67,9 @@ namespace Seiro.GPUSandbox.CGS
             }
 
             UpdateParticles();
-            RenderParticles();
+
+			RenderEdges();
+			RenderParticles();
         }
 
         private IEnumerator ProcessDividing()
@@ -93,6 +98,7 @@ namespace Seiro.GPUSandbox.CGS
 
             // インスタンシングの用意
             _particleMesh = UtilFunc.BuildQuad();
+			_edgeMesh = UtilFunc.BuildQuad();
             _instancingArgs[0] = _particleMesh.GetIndexCount(0);
             _instancingArgs[1] = (uint)particleCount;
             _instancingArgsBuffer = new ComputeBuffer(particleCount, Marshal.SizeOf(typeof(uint)), ComputeBufferType.IndirectArguments);
@@ -205,6 +211,22 @@ namespace Seiro.GPUSandbox.CGS
             Graphics.DrawMeshInstancedIndirect(_particleMesh, 0, particleMat, new Bounds(transform.position, instancingExtents), _instancingArgsBuffer);
         }
 
+		/// <summary>
+		/// エッジの描画
+		/// </summary>
+		private void RenderEdges()
+		{
+			if (_edgeMesh == null || edgeMat == null)
+			{
+				return;
+			}
+
+			edgeMat.SetPass(0);
+			edgeMat.SetBuffer("_Edges", _edges.objectBuffer);
+			edgeMat.SetBuffer("_Particles", _particles.read);
+			Graphics.DrawMeshInstancedIndirect(_edgeMesh, 0, edgeMat, new Bounds(transform.position, instancingExtents), _instancingArgsBuffer);
+		}
+
         // Dividing Particles
 
         /// <summary>
@@ -266,7 +288,7 @@ namespace Seiro.GPUSandbox.CGS
             }
             else
             {
-                DivideEdgesClosed(dividableEdgeCount);
+                DivideEdgesClosed(dividableEdgeCount, maxDivideEdgeCount);
             }
         }
 
@@ -327,6 +349,11 @@ namespace Seiro.GPUSandbox.CGS
             UtilFunc.Dispatch1D(compute, kernel, maxDivideCount);
         }
 
+		/// <summary>
+		/// 閉じたネットワークを生成するようにパーティクルの分割を行う。
+		/// </summary>
+		/// <param name="dividableEdgeCount"></param>
+		/// <param name="maxDivideCount"></param>
         private void DivideEdgesClosed(int dividableEdgeCount, int maxDivideCount = 16)
         {
             var kernel = compute.FindKernel("CS_DivideEdgesClosed");

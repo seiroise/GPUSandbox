@@ -226,7 +226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b80d749b55b13546bb55c8ff3817ac1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  particleCount: 2048
+  particleCount: 128
   compute: {fileID: 7200000, guid: 24d16dbf1ce66ca4ba0b33eb9aa3e812, type: 3}
   deltaTime: 0.016
   velocityDrag: 0.9
@@ -234,10 +234,13 @@ MonoBehaviour:
   repulsion: 0.5
   spring: 1
   grow: 1
-  maxLink: 2
+  maxLinks: 2
   dividingInterval: 0.5
+  emitParticleCount: 1
+  maxDivideParticleCount: 2
+  maxDivideEdgeCount: 2
   particleMat: {fileID: 2100000, guid: c8ec3a0bc1b654c27918fba210690637, type: 2}
-  edgeMat: {fileID: 0}
+  edgeMat: {fileID: 2100000, guid: 75db843a96a36794f81cee92ca8b4471, type: 2}
   instancingExtents: {x: 10, y: 10, z: 10}
   pallete:
     serializedVersion: 2
