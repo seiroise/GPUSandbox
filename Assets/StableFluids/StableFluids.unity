@@ -213,27 +213,28 @@ MonoBehaviour:
   p1: 1
   p2: 1
   p3: 1
-  iterations: 4
-  vorticityCoef: 0.3
+  deltaTime: 0.001
+  iterations: 1
+  vorticityCoef: 0
   viscosityCoef: 0
-  velocityAdvectionDecay: 0.98
-  mouse: 2
-  mouseRadius: 0.01
-  mouseForce: 1
+  velocityAdvectionDecay: 0.991
+  mouse: 1
+  mouseRadius: 0.043
+  mouseForce: 1.54
   mouseForceDir: {x: 0, y: 1}
   autoMouseColor: 1
   mouseColorPallet:
     serializedVersion: 2
-    key0: {r: 0.9254902, g: 0.25490198, b: 0.05490196, a: 1}
-    key1: {r: 0.9254902, g: 0.25490198, b: 0.05490196, a: 1}
-    key2: {r: 1, g: 0.9029005, b: 0.6273585, a: 0}
+    key0: {r: 1, g: 0.8901961, b: 0.48235294, a: 1}
+    key1: {r: 0, g: 0.08627451, b: 0.33333334, a: 1}
+    key2: {r: 0.6313726, g: 0.90588236, b: 0.5176471, a: 0}
     key3: {r: 1, g: 0.9029005, b: 0.6273585, a: 0}
     key4: {r: 1, g: 0.9029005, b: 0.6273585, a: 0}
     key5: {r: 1, g: 0.9029005, b: 0.6273585, a: 0}
     key6: {r: 1, g: 0.9029005, b: 0.6273585, a: 0}
     key7: {r: 1, g: 0.9029005, b: 0.6273585, a: 0}
     ctime0: 0
-    ctime1: 65535
+    ctime1: 32768
     ctime2: 65535
     ctime3: 65535
     ctime4: 65535
@@ -249,11 +250,11 @@ MonoBehaviour:
     atime6: 0
     atime7: 0
     m_Mode: 0
-    m_NumColorKeys: 2
+    m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   copy: {fileID: 2100000, guid: c27815a51313d433180a0a258079e480, type: 2}
-  sourceTexture: {fileID: 2800000, guid: c4c5bc6ace9fb461ab26e3efef8b38d3, type: 3}
-  colorAdvectionDecay: 1
+  sourceTexture: {fileID: 2800000, guid: 4ff9f5b6cf35d4e74b19108a035cdbc0, type: 3}
+  colorAdvectionDecay: 0.9969
 --- !u!124 &752491230
 Behaviour:
   m_ObjectHideFlags: 0

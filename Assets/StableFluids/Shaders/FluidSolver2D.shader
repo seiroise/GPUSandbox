@@ -12,7 +12,6 @@
 
 		#include "UnityCG.cginc"
 
-		#define DT 0.016
 		#define PI 3.14159265
 
 		struct appdata
@@ -40,6 +39,7 @@
 		sampler2D_float _Params;	// (x, y) : 速度場, (z) : 渦度, (w) : 圧力
 		float4 _Params_TexelSize;
 
+		float _DT;					// delta time
 		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 移流減衰
 
 		// 指定した座標の速度場の発散を計算
@@ -145,7 +145,7 @@
 		{
 			float4 p = tex2D(_Params, i.uv);
 			p.xy -= grad_pressure(i.uv);
-			p.xy += _SimConstants.y * lap_velocity(i.uv, p.xy) * DT;
+			p.xy += _SimConstants.y * lap_velocity(i.uv, p.xy) * _DT;
 			p.xy = p.xy;
 			return p;
 		}
@@ -157,7 +157,7 @@
 		fixed4 frag_advect_color(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
-			fixed4 c = tex2D(_MainTex, i.uv - (p.xy * DT));
+			fixed4 c = tex2D(_MainTex, i.uv - (p.xy * _DT));
 			return c * _SimConstants.w;		// 速度場による色の移流と減衰
 		}
 
@@ -165,7 +165,7 @@
 		float4 frag_advect_velocity(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
-			float4 q = tex2D(_Params, i.uv - (p.xy * DT));
+			float4 q = tex2D(_Params, i.uv - (p.xy * _DT));
 			p.xy = q.xy * _SimConstants.z;	// 速度の移流による減衰;
 			return p;
 		}

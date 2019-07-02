@@ -55,7 +55,9 @@ namespace Seiro.GPUSandbox.StableFluids
 
         [Space]
 
-        [Range(1, 40)]
+        [Range(1e-3f, 2e-1f)]
+        public float deltaTime = 1.6e-2f;
+        [Range(1, 100)]
         public int iterations = 4;
         [Range(0, .5f)]
         public float vorticityCoef = .11f;
@@ -69,7 +71,7 @@ namespace Seiro.GPUSandbox.StableFluids
         public MouseInteraction mouse = MouseInteraction.Circle;
         [Range(0.001f, .2f)]
         public float mouseRadius = 0.1f;
-        [Range(0.01f, 1000f)]
+        [Range(0.01f, 5f)]
         public float mouseForce = 1f;
         public Vector2 mouseForceDir = Vector2.one;
         public bool autoMouseColor = true;
@@ -79,7 +81,7 @@ namespace Seiro.GPUSandbox.StableFluids
 
         public Material copy;
         public Texture2D sourceTexture;
-        [Range(0.9f, 1f)]
+        [Range(0.99f, 1f)]
         public float colorAdvectionDecay = .998f;
 
         private bool _mouseDragging;
@@ -89,6 +91,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private PingPongTexture _view;			// 表示用のテクスチャ
         private Material _solver;
         private int _sourceTexId;
+        private int _dtId;
         private int _paramsId;
         private int _mouseId;
         private int _mouseColorId;
@@ -150,6 +153,7 @@ namespace Seiro.GPUSandbox.StableFluids
             // シェーダプロパティインデックスの取得
             _solver = new Material(Shader.Find("Hidden/FluidSolver2D"));
             _sourceTexId = Shader.PropertyToID("_SourceTex");
+            _dtId = Shader.PropertyToID("_DT");
             _paramsId = Shader.PropertyToID("_Params");
             _mouseId = Shader.PropertyToID("_Mouse");
             _mouseColorId = Shader.PropertyToID("_MouseColor");
@@ -190,6 +194,7 @@ namespace Seiro.GPUSandbox.StableFluids
             if (_solver == null || _params == null) return;
 
             _solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
+            _solver.SetFloat(_dtId, deltaTime);
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
             _params.Swap();
