@@ -59,11 +59,9 @@
 			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
 			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
-			vort = float3(
-			abs(p_u.z) - abs(p_d.z),
-			abs(p_l.z) - abs(p_r.z),
-			p_d.x - p_u.x + p_r.y - p_l.y
-			);
+			vort = float3(abs(p_u.z) - abs(p_d.z)
+						 ,abs(p_l.z) - abs(p_r.z)
+						 ,p_d.x - p_u.x + p_r.y - p_l.y);
 		}
 
 		// 指定した座標の速度場の発散を0に抑えるための圧力を計算
@@ -102,6 +100,20 @@
 		float4 frag_clear(v2f i) : SV_Target
 		{
 			return float4(0, 0, 0, 0);
+		}
+
+		float boxSDF(float2 p, float2 size)
+		{
+			float2 r = abs(p) - size;
+			return min(max(r.x, r.y), 0.) + length(max(r, float2(0, 0)));
+		}
+
+		// 境界付近のパラメータだけを初期化する。
+		float4 frag_clear_boundaries(v2f i) : SV_Target
+		{
+			float d = boxSDF(i.uv - .5, .5 - _Params_TexelSize.xy);
+			float4 src = tex2D(_Params, i.uv);
+			return lerp(float4(0,0,0,0), src, step(d, 0));
 		}
 
 		sampler2D _SourceTex;
@@ -258,6 +270,13 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_clear
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_clear_boundaries
 			ENDCG
 		}
 		Pass

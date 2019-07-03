@@ -10,6 +10,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private enum SolverPass
         {
             Clear = 0,
+			ClearBoundaries,
             Copy,
             CalcDivergence,
             CalcAndApplyVorticity,
@@ -71,14 +72,14 @@ namespace Seiro.GPUSandbox.StableFluids
         public MouseInteraction mouse = MouseInteraction.Circle;
         [Range(0.001f, .2f)]
         public float mouseRadius = 0.1f;
-        [Range(0.01f, 5f)]
         public float mouseForce = 1f;
         public Vector2 mouseForceDir = Vector2.one;
         public bool autoMouseColor = true;
         public Gradient mouseColorPallet;
 
-        [Space]
+		[Space]
 
+		public TextureWrapMode wrapMode = TextureWrapMode.Repeat;
         public Material copy;
         public Texture2D sourceTexture;
         [Range(0.99f, 1f)]
@@ -148,7 +149,7 @@ namespace Seiro.GPUSandbox.StableFluids
         {
             RenderTextureDescriptor desc = UtilFunc.CreateCommonDesc();
             desc.colorFormat = RenderTextureFormat.ARGBFloat;
-            _params = new PingPongTexture("stable fluids work", desc, TextureWrapMode.Repeat);
+            _params = new PingPongTexture("stable fluids work", desc, wrapMode);
 
             // シェーダプロパティインデックスの取得
             _solver = new Material(Shader.Find("Hidden/FluidSolver2D"));
@@ -164,7 +165,7 @@ namespace Seiro.GPUSandbox.StableFluids
             _renderingParamsId = Shader.PropertyToID("_RenderingParams");
 
             // 表示用テクスチャへの描画
-            _view = new PingPongTexture("stablue fluids view", desc, TextureWrapMode.Repeat);
+            _view = new PingPongTexture("stablue fluids view", desc, wrapMode);
             _solver.SetTexture(_sourceTexId, sourceTexture);
             Graphics.Blit(null, _view.write, _solver, (int)SolverPass.Copy);
             _view.Swap();
@@ -193,7 +194,12 @@ namespace Seiro.GPUSandbox.StableFluids
         {
             if (_solver == null || _params == null) return;
 
-            _solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
+			// 境界付近の物理量を初期化する
+			_solver.SetTexture(_paramsId, _params.read);
+			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ClearBoundaries);
+			_params.Swap();
+
+			_solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
             _solver.SetFloat(_dtId, deltaTime);
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
@@ -227,6 +233,7 @@ namespace Seiro.GPUSandbox.StableFluids
             int pass = -1;
             if (mouse == MouseInteraction.Circle)
             {
+				// 円形に力を加える。
                 _solver.SetVector(_mouseId, new Vector4(st.x, st.y, mouseRadius, mouseForce * d.magnitude));
                 _solver.SetVector(_forceDirId, d.normalized);
                 pass = (int)SolverPass.Mouse_Circle;
