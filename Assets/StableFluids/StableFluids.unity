@@ -214,7 +214,7 @@ MonoBehaviour:
   p2: 1
   p3: 1
   deltaTime: 0.11
-  iterations: 22
+  iterations: 4
   vorticityCoef: 0.167
   viscosityCoef: 0
   velocityAdvectionDecay: 0.988
