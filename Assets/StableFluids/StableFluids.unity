@@ -217,17 +217,10 @@ MonoBehaviour:
   iterations: 4
   vorticityCoef: 0.167
   viscosityCoef: 0
-<<<<<<< HEAD
-  velocityAdvectionDecay: 0.991
-  mouse: 2
-  mouseRadius: 0.043
-  mouseForce: 1.54
-=======
   velocityAdvectionDecay: 0.988
   mouse: 0
   mouseRadius: 0.017
   mouseForce: -10
->>>>>>> 90ee917dccfe5df4c3b0a45337ac44050bdd7fe9
   mouseForceDir: {x: 0, y: 1}
   autoMouseColor: 1
   mouseColorPallet:

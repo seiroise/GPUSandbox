@@ -9,19 +9,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a72c9c4d99f1c9449acbd91c62b08565, type: 3}
-  m_Name: SimProfile_260K
+  m_Name: SimProfile_16K_Wide
   m_EditorClassIdentifier: 
   _maxIterations: 8
   _timestep: 0.002
-  _gridDimX: 128
-  _gridDimY: 72
+  _gridDimX: 100
+  _gridDimY: 50
   _gridCellSize: 0.5
-  _particleCount: 262144
-  _smoothlen: 0.08
+  _particleCount: 16384
+  _smoothlen: 0.45
   _particleMass: 0.08
-  _restDensity: 4
+  _restDensity: 3
   _pressureStiffness: 5
-  _viscosity: 3
+  _viscosity: 3.49
   _gravity: {x: 0, y: -9.8}
   _wallStiffness: 3000
-  _mouseRadius: 10
+  _mouseRadius: 6.8
