@@ -218,7 +218,7 @@ MonoBehaviour:
   vorticityCoef: 0
   viscosityCoef: 0
   velocityAdvectionDecay: 0.991
-  mouse: 1
+  mouse: 2
   mouseRadius: 0.043
   mouseForce: 1.54
   mouseForceDir: {x: 0, y: 1}
