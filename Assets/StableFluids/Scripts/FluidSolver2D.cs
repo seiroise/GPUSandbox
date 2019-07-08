@@ -21,6 +21,7 @@ namespace Seiro.GPUSandbox.StableFluids
             Mouse_Circle,
             Mouse_LineSeg,
             Draw_Circle,
+			ApplyObstableMap,
             VeloicityColor,
             VorticityColor,
             PressureColor,
@@ -78,6 +79,9 @@ namespace Seiro.GPUSandbox.StableFluids
         public Gradient mouseColorPallet;
 
 		[Space]
+		public Texture2D obstacleMap = null;
+
+		[Space]
 
 		public TextureWrapMode wrapMode = TextureWrapMode.Repeat;
         public Material copy;
@@ -101,6 +105,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private int _lineWidthId;
         private int _simConstantsId;
         private int _renderingParamsId;
+		private int _obstacleMapId;
 
         private void OnEnable()
         {
@@ -163,6 +168,7 @@ namespace Seiro.GPUSandbox.StableFluids
             _lineWidthId = Shader.PropertyToID("_LineWidth");
             _simConstantsId = Shader.PropertyToID("_SimConstants");
             _renderingParamsId = Shader.PropertyToID("_RenderingParams");
+			_obstacleMapId = Shader.PropertyToID("_ObstacleMap");
 
             // 表示用テクスチャへの描画
             _view = new PingPongTexture("stablue fluids view", desc, wrapMode);
@@ -198,6 +204,15 @@ namespace Seiro.GPUSandbox.StableFluids
 			_solver.SetTexture(_paramsId, _params.read);
 			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ClearBoundaries);
 			_params.Swap();
+
+			// 障害物マップを描画
+			if (obstacleMap != null)
+			{
+				_solver.SetTexture(_paramsId, _params.read);
+				_solver.SetTexture(_obstacleMapId, obstacleMap);
+				Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ApplyObstableMap);
+				_params.Swap();
+			}
 
 			_solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
             _solver.SetFloat(_dtId, deltaTime);

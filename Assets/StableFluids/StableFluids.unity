@@ -209,18 +209,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   isSimulated: 1
   view: 5
-  p0: 1
-  p1: 1
+  p0: 100
+  p1: 40
   p2: 1
   p3: 1
   deltaTime: 0.11
-  iterations: 4
+  iterations: 20
   vorticityCoef: 0.167
-  viscosityCoef: 0
+  viscosityCoef: 0.8
   velocityAdvectionDecay: 0.988
-  mouse: 0
+  mouse: 2
   mouseRadius: 0.017
-  mouseForce: -10
+  mouseForce: 0.02
   mouseForceDir: {x: 0, y: 1}
   autoMouseColor: 1
   mouseColorPallet:
@@ -252,6 +252,7 @@ MonoBehaviour:
     m_Mode: 0
     m_NumColorKeys: 2
     m_NumAlphaKeys: 2
+  obstacleMap: {fileID: 2800000, guid: ddb5703b6bcd93949ad800db291d77bd, type: 3}
   wrapMode: 1
   copy: {fileID: 2100000, guid: c27815a51313d433180a0a258079e480, type: 2}
   sourceTexture: {fileID: 2800000, guid: 4ff9f5b6cf35d4e74b19108a035cdbc0, type: 3}

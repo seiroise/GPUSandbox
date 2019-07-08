@@ -113,7 +113,7 @@
 		{
 			float d = boxSDF(i.uv - .5, .5 - _Params_TexelSize.xy);
 			float4 src = tex2D(_Params, i.uv);
-			return lerp(float4(0,0,0,0), src, step(d, 0));
+			return lerp(float4(0,0,0,0.5), src, step(d, 0));
 		}
 
 		sampler2D _SourceTex;
@@ -245,6 +245,17 @@
 			return lerp(params, inParams, mask);			// このlerpってベクトルの要素毎に働くんだっけ？働いてくれるとすごく便利
 		}
 
+		// 障害物マップ
+		sampler2D _ObstacleMap;			// x > 0 : 障害物が存在
+
+		float4 frag_apply_obstacle_map(v2f i) : SV_Target
+		{
+			fixed4 obstacle = tex2D(_ObstacleMap, i.uv);
+			float4 params = tex2D(_Params, i.uv);
+			// return obstacle;
+			return lerp(params, float4(0,0,0,0.5), step(0.9, obstacle.x));
+		}
+
 		// それぞれのパラメータの描画
 		float4 _RenderingParams;
 		fixed4 frag_velocity_color(v2f i) : SV_Target
@@ -347,6 +358,13 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_draw_circle
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_apply_obstacle_map
 			ENDCG
 		}
 
