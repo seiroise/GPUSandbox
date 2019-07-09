@@ -92,6 +92,8 @@ namespace Seiro.GPUSandbox.StableFluids
         private bool _mouseDragging;
         private Vector2 _prevMouseSt;
 
+		private PingPongTexture _InputParams;	// 外部のパラメータの書き込み用。
+
         private PingPongTexture _params;		// シミュレーション用のパラメータ描画テクスチャ
         private PingPongTexture _view;			// 表示用のテクスチャ
         private Material _solver;

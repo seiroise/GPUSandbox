@@ -213,10 +213,10 @@ MonoBehaviour:
   p1: 40
   p2: 1
   p3: 1
-  deltaTime: 0.11
-  iterations: 20
-  vorticityCoef: 0.167
-  viscosityCoef: 0.8
+  deltaTime: 0.02
+  iterations: 50
+  vorticityCoef: 0.16
+  viscosityCoef: 2
   velocityAdvectionDecay: 0.988
   mouse: 2
   mouseRadius: 0.017
