@@ -156,8 +156,8 @@ public class FluidSimulator : MonoBehaviour {
 	int m_nNumCells;
 	int m_nNumGroupsX;
 	int m_nNumGroupsY;
-	int m_nWidth = 512;
-	int m_nHeight = 512;
+	int m_nWidth = 32;
+	int m_nHeight = 32;
 
 	//-------------------------------------------
 	void Start()

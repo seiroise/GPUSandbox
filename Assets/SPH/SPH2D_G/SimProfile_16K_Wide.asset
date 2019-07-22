@@ -13,7 +13,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _maxIterations: 8
   _timestep: 0.002
-  _gridDimX: 100
+  _gridDimX: 85
   _gridDimY: 50
   _gridCellSize: 0.5
   _particleCount: 16384
