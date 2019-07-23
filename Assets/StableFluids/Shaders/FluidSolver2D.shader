@@ -40,7 +40,9 @@
 		float4 _Params_TexelSize;
 
 		float _DT;					// delta time
-		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 移流減衰
+		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 速度移流減衰, (w) : 色移流減衰
+
+		// float2 _Advection;
 
 		// 指定した座標の速度場の発散を計算
 		float div_velocity(float2 x)
@@ -143,6 +145,14 @@
 			return p;
 		}
 
+		// 速度場に拡散粘性を適用する。
+		float4 frag_apply_viscosity(v2f i) : SV_Target
+		{
+			float4 p = tex2D(_Params, i.uv);
+			p.xy = _SimConstants.y * lap_velocity(i.uv, p.xy);
+			return p;
+		}
+
 		// 速度場の発散を0にするための圧力を計算する
 		// これを複数回呼び出すことでpoisson方程式を解く
 		float4 frag_calc_pres(v2f i) : SV_Target
@@ -152,18 +162,15 @@
 			return p;
 		}
 
-		// 速度場に圧力場の勾配を適用する
+		// 速度場に圧力場の勾配を適用する。
 		float4 frag_apply_pres(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
 			p.xy -= grad_pressure(i.uv);
-			p.xy += _SimConstants.y * lap_velocity(i.uv, p.xy) * _DT;
-			p.xy = p.xy;
 			return p;
 		}
 
 		sampler2D _MainTex;
-
 
 		// 色を移流させる
 		fixed4 frag_advect_color(v2f i) : SV_Target
@@ -309,6 +316,13 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_apply_vorticity
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_apply_viscosity
 			ENDCG
 		}
 		Pass
