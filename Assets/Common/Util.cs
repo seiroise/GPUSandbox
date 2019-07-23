@@ -65,10 +65,10 @@ namespace Seiro.GPUSandbox
         public void Swap() { var tmp = _r; _r = _w; _w = tmp; }
     }
 
-	/// <summary>
-	/// オブジェクトプール用の基底クラス
-	/// オブジェクトに対応するインデックスのプールとそれの数を把握するためのカウントバッファを保持。
-	/// </summary>
+    /// <summary>
+    /// オブジェクトプール用の基底クラス
+    /// オブジェクトに対応するインデックスのプールとそれの数を把握するためのカウントバッファを保持。
+    /// </summary>
     [Serializable]
     public abstract class GPUObjectPoolBase : IDisposable
     {
@@ -100,13 +100,13 @@ namespace Seiro.GPUSandbox
         }
     }
 
-	[Serializable]
-	public sealed class GPUIndexPool : GPUObjectPoolBase
-	{
-		public GPUIndexPool(int count) : base(count, typeof(int)) { }
-	}
+    [Serializable]
+    public sealed class GPUIndexPool : GPUObjectPoolBase
+    {
+        public GPUIndexPool(int count) : base(count, typeof(int)) { }
+    }
 
-	[Serializable]
+    [Serializable]
     public sealed class GPUObjectPool : GPUObjectPoolBase
     {
         ComputeBuffer _objectBuffer;
@@ -214,9 +214,14 @@ namespace Seiro.GPUSandbox
 
         public static RenderTextureDescriptor CreateCommonDesc()
         {
+            return CreateCommonDesc(Screen.width, Screen.height);
+        }
+
+        public static RenderTextureDescriptor CreateCommonDesc(int width, int height)
+        {
             var desc = new RenderTextureDescriptor();
-            desc.width = Screen.width;
-            desc.height = Screen.height;
+            desc.width = width;
+            desc.height = height;
             desc.autoGenerateMips = false;
             desc.depthBufferBits = 0;
             desc.volumeDepth = 1;
@@ -238,11 +243,11 @@ namespace Seiro.GPUSandbox
             return tex;
         }
 
-		public static void Dispatch1D(ComputeShader compute, int kernel, int threads)
-		{
-			uint x, y, z;
-			compute.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
-			compute.Dispatch(kernel, Mathf.CeilToInt(threads / (float)x), (int)y, (int)z);
-		}
-	}
+        public static void Dispatch1D(ComputeShader compute, int kernel, int threads)
+        {
+            uint x, y, z;
+            compute.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
+            compute.Dispatch(kernel, Mathf.CeilToInt(threads / (float)x), (int)y, (int)z);
+        }
+    }
 }

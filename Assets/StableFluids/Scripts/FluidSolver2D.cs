@@ -10,7 +10,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private enum SolverPass
         {
             Clear = 0,
-			ClearBoundaries,
+            ClearBoundaries,
             Copy,
             CalcDivergence,
             CalcAndApplyVorticity,
@@ -21,10 +21,18 @@ namespace Seiro.GPUSandbox.StableFluids
             Mouse_Circle,
             Mouse_LineSeg,
             Draw_Circle,
-			ApplyObstableMap,
+            ApplyObstableMap,
             VeloicityColor,
             VorticityColor,
             PressureColor,
+        }
+
+        public enum SolverResolution
+        {
+            x32 = 4,
+            x64,
+            x128,
+            x256
         }
 
         /// <summary>
@@ -51,6 +59,7 @@ namespace Seiro.GPUSandbox.StableFluids
         }
 
         public bool isSimulated = true;
+        public SolverResolution solverResolution = SolverResolution.x256;
 
         public View view = View.All;
         public float p0, p1, p2, p3;
@@ -78,12 +87,12 @@ namespace Seiro.GPUSandbox.StableFluids
         public bool autoMouseColor = true;
         public Gradient mouseColorPallet;
 
-		[Space]
-		public Texture2D obstacleMap = null;
+        [Space]
+        public Texture2D obstacleMap = null;
 
-		[Space]
+        [Space]
 
-		public TextureWrapMode wrapMode = TextureWrapMode.Repeat;
+        public TextureWrapMode wrapMode = TextureWrapMode.Repeat;
         public Material copy;
         public Texture2D sourceTexture;
         [Range(0.99f, 1f)]
@@ -92,7 +101,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private bool _mouseDragging;
         private Vector2 _prevMouseSt;
 
-		private PingPongTexture _InputParams;	// 外部のパラメータの書き込み用。
+        private PingPongTexture _InputParams;	// 外部のパラメータの書き込み用。
 
         private PingPongTexture _params;		// シミュレーション用のパラメータ描画テクスチャ
         private PingPongTexture _view;			// 表示用のテクスチャ
@@ -107,7 +116,7 @@ namespace Seiro.GPUSandbox.StableFluids
         private int _lineWidthId;
         private int _simConstantsId;
         private int _renderingParamsId;
-		private int _obstacleMapId;
+        private int _obstacleMapId;
 
         private void OnEnable()
         {
@@ -154,7 +163,13 @@ namespace Seiro.GPUSandbox.StableFluids
 
         private void BindResources()
         {
-            RenderTextureDescriptor desc = UtilFunc.CreateCommonDesc();
+            float aspect = (float)Screen.height / Screen.width;
+            int resolution = 1 << (int)solverResolution;
+            int width = resolution;
+            int height = (int)(resolution * aspect);
+
+            RenderTextureDescriptor desc = UtilFunc.CreateCommonDesc(width, height);
+
             desc.colorFormat = RenderTextureFormat.ARGBFloat;
             _params = new PingPongTexture("stable fluids work", desc, wrapMode);
 
@@ -170,7 +185,7 @@ namespace Seiro.GPUSandbox.StableFluids
             _lineWidthId = Shader.PropertyToID("_LineWidth");
             _simConstantsId = Shader.PropertyToID("_SimConstants");
             _renderingParamsId = Shader.PropertyToID("_RenderingParams");
-			_obstacleMapId = Shader.PropertyToID("_ObstacleMap");
+            _obstacleMapId = Shader.PropertyToID("_ObstacleMap");
 
             // 表示用テクスチャへの描画
             _view = new PingPongTexture("stablue fluids view", desc, wrapMode);
@@ -202,21 +217,21 @@ namespace Seiro.GPUSandbox.StableFluids
         {
             if (_solver == null || _params == null) return;
 
-			// 境界付近の物理量を初期化する
-			_solver.SetTexture(_paramsId, _params.read);
-			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ClearBoundaries);
-			_params.Swap();
+            // 境界付近の物理量を初期化する
+            _solver.SetTexture(_paramsId, _params.read);
+            Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ClearBoundaries);
+            _params.Swap();
 
-			// 障害物マップを描画
-			if (obstacleMap != null)
-			{
-				_solver.SetTexture(_paramsId, _params.read);
-				_solver.SetTexture(_obstacleMapId, obstacleMap);
-				Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ApplyObstableMap);
-				_params.Swap();
-			}
+            // 障害物マップを描画
+            if (obstacleMap != null)
+            {
+                _solver.SetTexture(_paramsId, _params.read);
+                _solver.SetTexture(_obstacleMapId, obstacleMap);
+                Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ApplyObstableMap);
+                _params.Swap();
+            }
 
-			_solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
+            _solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
             _solver.SetFloat(_dtId, deltaTime);
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
@@ -250,7 +265,7 @@ namespace Seiro.GPUSandbox.StableFluids
             int pass = -1;
             if (mouse == MouseInteraction.Circle)
             {
-				// 円形に力を加える。
+                // 円形に力を加える。
                 _solver.SetVector(_mouseId, new Vector4(st.x, st.y, mouseRadius, mouseForce * d.magnitude));
                 _solver.SetVector(_forceDirId, d.normalized);
                 pass = (int)SolverPass.Mouse_Circle;
