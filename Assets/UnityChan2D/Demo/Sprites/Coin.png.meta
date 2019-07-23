@@ -1,9 +1,12 @@
 fileFormatVersion: 2
 guid: 82f6479c556d14828b9d953594ab4fd0
 TextureImporter:
-  fileIDToRecycleName: {}
+  fileIDToRecycleName:
+    21300000: coin_0
+    21300002: coin_1
+    21300004: coin_2
   externalObjects: {}
-  serializedVersion: 5
+  serializedVersion: 9
   mipmaps:
     mipMapMode: 0
     enableMipMap: 0
@@ -21,6 +24,8 @@ TextureImporter:
     heightScale: 0.25
     normalMapFilter: 0
   isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
   grayScaleToAlpha: 0
   generateCubemap: 6
   cubemapConvolution: 0
@@ -31,7 +36,7 @@ TextureImporter:
     serializedVersion: 2
     filterMode: 0
     aniso: 1
-    mipBias: -1
+    mipBias: -100
     wrapU: 1
     wrapV: 1
     wrapW: 1
@@ -85,7 +90,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 
+      spriteID: 1a760a5ced684704199df4220360f905
       vertices: []
       indices: 
       edges: []
@@ -105,7 +110,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 
+      spriteID: 10bdce11ba0c48545950cf68d494dba5
       vertices: []
       indices: 
       edges: []
@@ -125,7 +130,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 
+      spriteID: dd825e6d4cce5c04da96ffcb874d406a
       vertices: []
       indices: 
       edges: []
@@ -139,6 +144,8 @@ TextureImporter:
     edges: []
     weights: []
   spritePackingTag: 
+  pSDRemoveMatte: 0
+  pSDShowRemoveMatteOption: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 

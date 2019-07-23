@@ -32,7 +32,7 @@
 			v2f o;
 			o.vertex = UnityObjectToClipPos(v.vertex);
 			o.uv = o.st = v.uv;
-			o.uv.y = 1 - o.uv.y;
+			o.uv.y = 1 - o.uv.y;	// 自前で用意したRenderTextureに対してはy座標は反転させる。
 			return o;
 		}
 		
@@ -73,7 +73,7 @@
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
 			// 発散はこの場で計算する
 			float d = (p_r.x - p_l.x) + (p_u.y - p_d.y);
-			return (p_r.w + p_l.w + p_u.w + p_d.w - d) * 0.25;
+			return (p_r.w + p_l.w + p_u.w + p_d.w - d * 0.5) * 0.25;
 		}
 
 		// 圧力場の勾配を出力

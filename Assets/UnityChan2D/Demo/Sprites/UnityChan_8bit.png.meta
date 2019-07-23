@@ -1,9 +1,11 @@
 fileFormatVersion: 2
 guid: 0926581c884b5496eaea0bd8ad02ae7f
 TextureImporter:
-  fileIDToRecycleName: {}
+  fileIDToRecycleName:
+    21300000: UnityChan_8bit_0
+    21300002: UnityChan_8bit_1
   externalObjects: {}
-  serializedVersion: 5
+  serializedVersion: 9
   mipmaps:
     mipMapMode: 0
     enableMipMap: 0
@@ -21,6 +23,8 @@ TextureImporter:
     heightScale: 0.25
     normalMapFilter: 0
   isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
   grayScaleToAlpha: 0
   generateCubemap: 6
   cubemapConvolution: 0
@@ -31,7 +35,7 @@ TextureImporter:
     serializedVersion: 2
     filterMode: 0
     aniso: 1
-    mipBias: -1
+    mipBias: -100
     wrapU: 1
     wrapV: 1
     wrapW: 1
@@ -85,7 +89,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 
+      spriteID: 8b720bdce1eb67141aa34ad19ece6b8f
       vertices: []
       indices: 
       edges: []
@@ -105,7 +109,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 
+      spriteID: 9976ef1a8c19fa44eb758244e3837a7f
       vertices: []
       indices: 
       edges: []
@@ -119,6 +123,8 @@ TextureImporter:
     edges: []
     weights: []
   spritePackingTag: 
+  pSDRemoveMatte: 0
+  pSDShowRemoveMatteOption: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
