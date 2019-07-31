@@ -72,8 +72,6 @@ void BitonicSort(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3
 		// (bool)(_LevelMask & dtid.x) : レベルは2の累乗で設定されるので, 
 		// _LevelMaskが8なら0-7はfalse, 8-15はtrueのように特定の周期での処理の切り替えをすることが可能。
 
-
-
 		uint2 result = (Compare(_SharedData[gi & ~j], _SharedData[gi | j]) == (bool)(_LevelMask & dtid.x)) ? _SharedData[gi ^ j] : _SharedData[gi];
 		// 確実に読み込みからの比較が行われていることを保証するために同期
 		GroupMemoryBarrierWithGroupSync();
