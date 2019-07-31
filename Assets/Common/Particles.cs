@@ -6,8 +6,8 @@ namespace Seiro.GPUSandbox
 {
 	public enum ParticleKind
 	{
-		NS = 0,	// neighbor search 用
-		SPH = 1
+		NS = 0,		// Neighbor Search 用
+		SPH = 1		// Smoothed Particle Hydrodynamics 用
 	}
 
 	[StructLayout(LayoutKind.Sequential)]

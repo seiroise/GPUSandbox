@@ -425,7 +425,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fluidCS: {fileID: 7200000, guid: d16c9da705bb04cf09312657a1aa7eaf, type: 3}
   simulate: 1
-  simProfile: {fileID: 11400000, guid: 6cb2ad598516e8744af0c9aa70e2f324, type: 2}
+  simProfile: {fileID: 11400000, guid: 8995b6b0ca6b7a04ab1b9dc50b0746d6, type: 2}
   instancingMat: {fileID: 2100000, guid: f0eb9d85e9d6f2840a37240970b2e64c, type: 2}
   instancingMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
   particleScale: 0.4

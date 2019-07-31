@@ -1,17 +1,27 @@
 ﻿#pragma kernel BitonicSort
 #pragma kernel MatrixTranspose
 
+// BITONIC_BLOCK_SIZEは共有メモリに載せられるソート対象の最大数に応じて変える必要がある。
+// uint2(8B)を格納したいので
+// Shader Model 4.0の場合はそれぞれ16KBより 256
+// Shader Model 5.0の場合はそれぞれ32KBより 512
 #define BITONIC_BLOCK_SIZE (512)
+
+// BITONIC_BLOCK_SIZEと同様に共有メモリのサイズを考慮する必要があるので。
+// n * n <= 512である必要がある。
+// よってn = 16の場合に256 < 512となる。(n = 32だと1024なのでNG、
+// この辺は容量の問題なので時間が解決してくれるかも。
 #define TRANSPOSE_BLOCK_SIZE (16)
 
 // about "register" syntax
 // https://docs.microsoft.com/ja-jp/windows/desktop/direct3dhlsl/dx-graphics-hlsl-variable-register
+// 定数バッファに対応するレジスタキーワードは"b"
 cbuffer cb : register(b0)
 {
 	uint _Level;
 	uint _LevelMask;
-	uint _Width;
-	uint _Height;
+	uint _Width;		// BITONIC_BLOCK_SIZE 以上の大きさのソート対象を扱うための転置処理に使用。
+	uint _Height;		// BITONIC_BLOCK_SIZE 以上の大きさのソート対象を扱うための転置処理に使用。
 };
 
 // 読み込み専用バッファ(対応するレジスタキーワードは"t"
@@ -23,11 +33,15 @@ RWStructuredBuffer<uint2> _Data : register(u0);
 // 共有メモリ上のデータ領域。一度に確保できる共有メモリの上限には注意
 groupshared uint2 _SharedData[BITONIC_BLOCK_SIZE];
 
+// 転置処理用の共有メモリ
+groupshared uint2 _TransposeSharedData[TRANSPOSE_BLOCK_SIZE * TRANSPOSE_BLOCK_SIZE];
+
 // ２つの要素の比較用の関数、lhs <= rhs となる場合にtrueを返す。
 // ベクトル内の要素は以下の意味を含んでいることを想定して比較される。
 // x : ソート用番号, y : ソート対象のデータに対応する番号
-bool Compare(uint2 lhs, uint2 rhs)
+inline bool Compare(uint2 lhs, uint2 rhs)
 {
+	// グリッド番号(x)が一致している場合はオブジェクト番号(y)の若い方を優先する。
 	return (lhs.x == rhs.x) ? (lhs.y <= rhs.y) : (lhs.x <= rhs.x);
 }
 
@@ -36,10 +50,13 @@ void BitonicSort(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3
 {
 	// まずは共有メモリ上に対象のデータをロードする。
 	_SharedData[gi] = _Data[dtid.x];
-	GroupMemoryBarrierWithGroupSync();		// グループ内のすべてのデータが共有メモリ上にロードされていることを保証するために同期をとる
+	// グループ内のすべてのデータが共有メモリ上にロードされていることを保証するために同期をとる
+	GroupMemoryBarrierWithGroupSync();
 
 	// 共有データ上の値のバイトニック列へのソート
 	// 指定されたレベルから比較する対象へのオフセットをずらしつつ比較していく
+	// _Level = 2の場合は真隣の要素との比較
+	// _Level = 4の場合は1 << (_Level - 1)ことなりの要素との比較
 	for(uint j = _Level >> 1; j > 0; j >>= 1)
 	{
 		// ここの論理演算はチョッコし難解
@@ -47,17 +64,27 @@ void BitonicSort(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3
 		// そのレベルでのバイトニック列を作ることができる。
 		// それを論理演算などで済まそうとした場合にこうなる。
 		// 実際にn = 8ぐらいで紙に書いて検算してみるといい。
+
+		// gi & ~j	: 必ずjの1になっているビットは0になる。
+		// gi | j	: 必ずjの1になっているビットは1になる。
+		// となることで、必ずjだけのオフセットのついた2つの数値が作られることになる。
+
+		// (bool)(_LevelMask & dtid.x) : レベルは2の累乗で設定されるので, 
+		// _LevelMaskが8なら0-7はfalse, 8-15はtrueのように特定の周期での処理の切り替えをすることが可能。
+
+
+
 		uint2 result = (Compare(_SharedData[gi & ~j], _SharedData[gi | j]) == (bool)(_LevelMask & dtid.x)) ? _SharedData[gi ^ j] : _SharedData[gi];
+		// 確実に読み込みからの比較が行われていることを保証するために同期
 		GroupMemoryBarrierWithGroupSync();
 		_SharedData[gi] = result;
+		// 確実に書き込みが行われていることを保証するために同期
 		GroupMemoryBarrierWithGroupSync();
 	}
 
 	// ソートした結果をバッファに格納。
 	_Data[dtid.x] = _SharedData[gi];
 }
-
-groupshared uint2 _TransposeSharedData[TRANSPOSE_BLOCK_SIZE * TRANSPOSE_BLOCK_SIZE];
 
 [numthreads(TRANSPOSE_BLOCK_SIZE, TRANSPOSE_BLOCK_SIZE, 1)]
 void MatrixTranspose(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3 gtid : SV_GroupThreadID, uint gi : SV_GroupIndex)
