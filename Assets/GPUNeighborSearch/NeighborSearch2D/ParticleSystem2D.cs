@@ -132,9 +132,9 @@ namespace Seiro.GPUSandbox.NS
 
         private void ReleaseResources()
         {
-            Functions.DestroyBuffer(ref _particlesBufferRead);
-            Functions.DestroyBuffer(ref _particlesBufferWrite);
-            Functions.DestroyBuffer(ref _instancingArgsBuffer);
+			UtilFunc.ReleaseBuffer(ref _particlesBufferRead);
+			UtilFunc.ReleaseBuffer(ref _particlesBufferWrite);
+			UtilFunc.ReleaseBuffer(ref _instancingArgsBuffer);
             _gridSorter.ReleaseResources();
         }
 

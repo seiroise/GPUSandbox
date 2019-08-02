@@ -97,10 +97,10 @@ namespace Seiro.GPUSandbox.NS
 		
         public void ReleaseResources()
         {
-            Functions.DestroyBuffer(ref _gridParticlesBuffer);
-			Functions.DestroyBuffer(ref _gridParticlesPingPongBuffer);
-			Functions.DestroyBuffer(ref _gridIndicesBuffer);
-			Functions.DestroyBuffer(ref _sortedObjectsTemporaryBuffer);
+			UtilFunc.ReleaseBuffer(ref _gridParticlesBuffer);
+			UtilFunc.ReleaseBuffer(ref _gridParticlesPingPongBuffer);
+			UtilFunc.ReleaseBuffer(ref _gridIndicesBuffer);
+			UtilFunc.ReleaseBuffer(ref _sortedObjectsTemporaryBuffer);
         }
 
         public void GridSort(ref ComputeBuffer objectBuffer)
