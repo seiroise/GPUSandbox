@@ -81,6 +81,8 @@ namespace Seiro.GPUSandbox.NS
 
             int matrixWidth = BITONIC_BLOCK_SIZE;
             int matrixHeight = _numElements / BITONIC_BLOCK_SIZE;
+			int dispatchX = Mathf.CeilToInt(matrixWidth / (float)TRANSPOSE_BLOCK_SIZE);
+			int dispatchY = Mathf.CeilToInt(matrixHeight / (float)TRANSPOSE_BLOCK_SIZE);
 
             for (int l = (BITONIC_BLOCK_SIZE << 1); l <= _numElements; l <<= 1)
             {
@@ -92,7 +94,7 @@ namespace Seiro.GPUSandbox.NS
                 SetGPUSortConstants(_bitonicCS, level, levelMask, matrixWidth, matrixHeight);
                 _bitonicCS.SetBuffer(_params.matrixTransposeKernelId, _params.inputBufId, inBuffer);
                 _bitonicCS.SetBuffer(_params.matrixTransposeKernelId, _params.dataBufId, tempBuffer);
-                _bitonicCS.Dispatch(_params.matrixTransposeKernelId, matrixWidth / TRANSPOSE_BLOCK_SIZE, matrixHeight / TRANSPOSE_BLOCK_SIZE, 1);
+                _bitonicCS.Dispatch(_params.matrixTransposeKernelId, dispatchX, dispatchY, 1);
 
                 // tempBufferのソート
                 _bitonicCS.SetBuffer(_params.bitonicSortKernelId, _params.dataBufId, tempBuffer);
@@ -102,7 +104,7 @@ namespace Seiro.GPUSandbox.NS
                 SetGPUSortConstants(_bitonicCS, BITONIC_BLOCK_SIZE, l, matrixHeight, matrixWidth);
                 _bitonicCS.SetBuffer(_params.matrixTransposeKernelId, _params.inputBufId, tempBuffer);
                 _bitonicCS.SetBuffer(_params.matrixTransposeKernelId, _params.dataBufId, inBuffer);
-                _bitonicCS.Dispatch(_params.matrixTransposeKernelId, matrixHeight / TRANSPOSE_BLOCK_SIZE, matrixWidth / TRANSPOSE_BLOCK_SIZE, 1);
+                _bitonicCS.Dispatch(_params.matrixTransposeKernelId, dispatchY, dispatchX, 1);		// 転置状態を元に戻すので、dispatchする軸がx,yで反転する。
 
                 // inBufferのソート
                 _bitonicCS.SetBuffer(_params.bitonicSortKernelId, _params.dataBufId, inBuffer);

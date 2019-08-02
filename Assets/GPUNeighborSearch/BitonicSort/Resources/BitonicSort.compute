@@ -68,6 +68,7 @@ void BitonicSort(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, uint3
 		// gi & ~j	: 必ずjの1になっているビットは0になる。
 		// gi | j	: 必ずjの1になっているビットは1になる。
 		// となることで、必ずjだけのオフセットのついた2つの数値が作られることになる。
+		// つまり(gi & ~j) < (gi | j)が成立する。
 
 		// (bool)(_LevelMask & dtid.x) : レベルは2の累乗で設定されるので, 
 		// _LevelMaskが8なら0-7はfalse, 8-15はtrueのように特定の周期での処理の切り替えをすることが可能。
@@ -92,6 +93,10 @@ void MatrixTranspose(uint3 gid : SV_GroupID, uint3 dtid : SV_DispatchThreadID, u
 	GroupMemoryBarrierWithGroupSync();
 	// ここから転置先のアドレスを計算し、共有メモリ上の行列から行(x)と列(y)を反転させた値を元のデータに再配置する
 	// そうすると、任意のアドレス分ずれた先の先のデータ同士を隣接させることができる。
+
+	// GPU上での効率のいい転置
+	// ここで計算するアドレスは、_Input[dtid.y * _Width + dtid.x]に格納した場所ではなく、共有メモリ上の転置した位置にある値を格納するためのアドレス
+	// 共有メモリ上の転置された位置にある要素は_TransposeSharedData[gtid.x * TRANSPOSE_BLOCK_SIZE + gtid.y]で取得している。これはx,yの計算を反転させればいいだけだから簡単。
 	uint2 address = dtid.yx - gtid.yx + gtid.xy;
 	_Data[address.y * _Height + address.x] = _TransposeSharedData[gtid.x * TRANSPOSE_BLOCK_SIZE + gtid.y];
 }
