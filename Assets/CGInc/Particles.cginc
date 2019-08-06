@@ -31,11 +31,23 @@ struct CGS_Particle2D
 	uint alive;
 };
 
+// CGS用の2Dエッジ
 struct CGS_Edge2D
 {
 	int a, b;
 	float2 force;
 	uint alive;
+};
+
+// SPH用の3Dパーティクル
+struct SPH_Particle3D
+{
+	float3 position;
+	float3 velocity;
+	float3 acceleration;
+	float density;
+	float pressure;
+	float3 color;
 };
 
 #endif

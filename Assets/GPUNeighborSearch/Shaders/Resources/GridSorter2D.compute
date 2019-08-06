@@ -14,7 +14,7 @@
 // 対象となるパーティクルを格納するためのバッファ種類に応じていくつか必要になる。
 // なので切り替えたい場合はdefineを使用すること
 #include "Assets/CGInc/ParticlesBuffer.cginc"
-#include "Assets/CGInc/NeighborSearch2D.cginc"
+#include "Assets/CGInc/NeighborSearch.cginc"
 
 // パーティクルと対応するグリッドハッシュのペアを格納するためのバッファ
 StructuredBuffer<uint2> _GridParticlePairBufferRead;
@@ -60,7 +60,7 @@ uint GetGridValue(uint2 pair)
 void BuildGridParticlesCS(uint3 dtid : SV_DispatchThreadID)
 {
 	uint pid = dtid.x;
-	if(pid > (uint)(_ParticleCount - 1)) return;
+	if (pid > (uint)(_ParticleCount - 1)) return;
 
 	float2 pos = _ParticlesBufferRead[pid].position;
 	float2 grid = CalcGridAddress(pos, _GridCellSize, _GridDim);

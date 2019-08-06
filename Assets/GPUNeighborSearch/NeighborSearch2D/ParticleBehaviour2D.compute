@@ -1,8 +1,7 @@
 ﻿#pragma kernel UpdateParticleColorCS
 
 #include "Assets/CGInc/Particles.cginc"
-#include "Assets/CGInc/NeighborSearch2D.cginc"
-// #include "Assets/GPUNeighborSearch/Common/NeighborSearch2D.cginc"
+#include "Assets/CGInc/NeighborSearch.cginc"
 
 // パーティクル関連のバッファ
 StructuredBuffer<Particle2D> _ParticlesBufferRead;

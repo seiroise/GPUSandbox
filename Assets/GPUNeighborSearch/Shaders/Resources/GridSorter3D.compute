@@ -1,0 +1,7 @@
+﻿#pragma kernel TestCS
+
+[numthreads(8, 8, 1)]
+void TestCS(uint3 dtid : SV_DispatchThreadID)
+{
+
+}

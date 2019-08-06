@@ -8,7 +8,7 @@
 
 #include "Assets/CGInc/Particles.cginc"
 #include "Assets/CGInc/SPH.cginc"
-#include "Assets/CGInc/NeighborSearch2D.cginc"
+#include "Assets/CGInc/NeighborSearch.cginc"
 
 cbuffer cb : register(b0)
 {

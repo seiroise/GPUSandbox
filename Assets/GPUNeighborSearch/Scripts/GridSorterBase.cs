@@ -33,7 +33,7 @@ namespace Seiro.GPUSandbox.NS
 			public readonly int gridDimConstId;
 			public readonly int gridCellSizeConstId;
 
-			public ShaderProps(ref ComputeShader cs, ParticleKind particleKind)
+			public ShaderProps(ref ComputeShader cs, Particle2DKind particleKind)
 			{
 				// カーネルの使用しているバッファの型が異なるが、
 				// それぞれ対応するインデックス分ずれて宣言されているのでparticleKindだけずらす。
@@ -78,7 +78,7 @@ namespace Seiro.GPUSandbox.NS
 
 		public ComputeBuffer gridIndicesBuffer { get { return _gridIndicesBuffer; } }
 
-        public GridSorterBase(int objectCount, int objectStride, int gridCellCount, float gridCellSize, ComputeShader gridSortCS, ComputeShader bitonicSortCS, ParticleKind particleKind)
+        public GridSorterBase(int objectCount, int objectStride, int gridCellCount, float gridCellSize, ComputeShader gridSortCS, ComputeShader bitonicSortCS, Particle2DKind particleKind)
         {
             _objectCount = objectCount;
 			_objectStride = objectStride;

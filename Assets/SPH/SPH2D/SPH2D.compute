@@ -80,15 +80,15 @@ void DensityCS(uint3 dtid : SV_DispatchThreadID)
 
 	float sq_h = _Smoothlen * _Smoothlen;
 	float density = 0;
-	for(uint i = 0; i < _ParticleCount; ++i)
+	for (uint i = 0; i < _ParticleCount; ++i)
 	{
-		if(i == pid) continue;
+		if (i == pid) continue;
 
 		SPH_Particle2D q = _ParticlesBufferRead[i];
 		float2 diff = p_pos - q.position;
 		float sq_r = dot(diff, diff);
 
-		if(sq_r <= sq_h)
+		if (sq_r <= sq_h)
 		{
 			// massはdensity kernel coefに含めている想定
 			density += CalcDensity(sq_r);

@@ -20,7 +20,6 @@
 
 			#include "UnityCG.cginc"
 			#include "Assets/CGInc/Particles.cginc"
-			#include "Assets/CGInc/NeighborSearch2D.cginc"
 
 			struct appdata
 			{

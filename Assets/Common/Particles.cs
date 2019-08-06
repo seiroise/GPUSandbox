@@ -4,10 +4,19 @@ using UnityEngine;
 
 namespace Seiro.GPUSandbox
 {
-	public enum ParticleKind
+	
+	// これらのenumはcompute内で、使用するカーネルを変更するために必要。
+
+	public enum Particle2DKind
 	{
 		NS = 0,		// Neighbor Search 用
-		SPH = 1		// Smoothed Particle Hydrodynamics 用
+		SPH = 1,	// Smoothed Particle Hydrodynamics 用
+	}
+
+	public enum Particle3DKind
+	{
+		NS = 0,
+		SPH = 1,
 	}
 
 	public enum ParticleCount
@@ -24,7 +33,7 @@ namespace Seiro.GPUSandbox
 		N_260K = 1 << 18,
 	}
 
-	[StructLayout(LayoutKind.Sequential)]
+	[Serializable, StructLayout(LayoutKind.Sequential)]
 	public struct Particle2D
 	{
 		Vector2 position;
@@ -47,6 +56,25 @@ namespace Seiro.GPUSandbox
 		public Vector2 acceleration;
 		public float density;
 		public float pressure;
-		public Vector3 Color;
+		public Vector3 color;
+	}
+
+	[Serializable, StructLayout(LayoutKind.Sequential)]
+	public struct Particle3D
+	{
+		public Vector3 position;
+		public Vector3 velocity;
+		public Vector3 color;
+	}
+
+	[Serializable, StructLayout(LayoutKind.Sequential)]
+	public struct SPH_Particle3D
+	{
+		public Vector3 position;
+		public Vector3 velocity;
+		public Vector3 acceleration;
+		public float density;
+		public float pressure;
+		public Vector3 color;
 	}
 }

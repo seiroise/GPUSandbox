@@ -104,7 +104,7 @@ namespace Seiro.GPUSandbox.SPH
 
             _shaderProps = new SPH_GShaderProps(ref fluidCS);
             InitParticlesBuffers(ref _particlesBufferRead, ref _particlesBufferWrite);
-            _gridSorter = new GridSorter2D(_particleCountInt, Marshal.SizeOf(typeof(SPH_Particle2D)), simProfile.gridDims, simProfile.gridCellSize, ParticleKind.SPH);
+            _gridSorter = new GridSorter2D(_particleCountInt, Marshal.SizeOf(typeof(SPH_Particle2D)), simProfile.gridDims, simProfile.gridCellSize, Particle2DKind.SPH);
             InitRendering();
             CalcCoef();
 

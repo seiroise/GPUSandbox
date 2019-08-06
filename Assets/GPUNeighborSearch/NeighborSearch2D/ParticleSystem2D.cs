@@ -65,7 +65,7 @@ namespace Seiro.GPUSandbox.NS
             _particlesBufferWrite = new ComputeBuffer(_particleCountInt, structSize);
             InitializeParticlesBuffer();
 
-            _gridSorter = new GridSorter2D(_particleCountInt, structSize, gridDim, gridCellSize, ParticleKind.NS);
+            _gridSorter = new GridSorter2D(_particleCountInt, structSize, gridDim, gridCellSize, Particle2DKind.NS);
             _shaderProps = new ShaderProperties(ref particleCS);
 
             _instancingArgsBuffer = new ComputeBuffer(1, sizeof(uint) * _instancingArgs.Length, ComputeBufferType.IndirectArguments);
