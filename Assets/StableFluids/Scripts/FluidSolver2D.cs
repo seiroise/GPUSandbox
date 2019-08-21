@@ -33,7 +33,9 @@ namespace Seiro.GPUSandbox.StableFluids
             x32 = 4,
             x64,
             x128,
-            x256
+            x256,
+			x512,
+			x1024,
         }
 
         /// <summary>

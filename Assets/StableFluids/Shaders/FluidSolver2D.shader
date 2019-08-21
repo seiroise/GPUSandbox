@@ -149,7 +149,7 @@
 		float4 frag_apply_viscosity(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
-			p.xy = _SimConstants.y * lap_velocity(i.uv, p.xy);
+			p.xy += _SimConstants.y * lap_velocity(i.uv, p.xy);
 			return p;
 		}
 

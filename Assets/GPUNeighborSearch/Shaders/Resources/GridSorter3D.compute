@@ -1,7 +1,3 @@
-﻿#pragma kernel TestCS
+﻿#include "Assets/CGInc/Particles.cginc"
 
-[numthreads(8, 8, 1)]
-void TestCS(uint3 dtid : SV_DispatchThreadID)
-{
-
-}
+#include "Assets/CGInc/ParticlesBuffer.cginc"

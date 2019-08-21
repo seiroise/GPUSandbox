@@ -39,6 +39,14 @@ struct CGS_Edge2D
 	uint alive;
 };
 
+// シンプルな3Dパーティクル
+struct Particle3D
+{
+	float3 position;
+	float3 velocity;
+	float3 color;
+};
+
 // SPH用の3Dパーティクル
 struct SPH_Particle3D
 {
