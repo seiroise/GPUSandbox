@@ -27,7 +27,7 @@
 	/// <summary>
 	/// ソルバーの解像度
 	/// </summary>
-	public enum SolverResolution
+	public enum Resolution
 	{
 		x32 = 4,
 		x64,

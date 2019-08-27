@@ -18,7 +18,7 @@ namespace Seiro.GPUSandbox.StableFluids
 		/// <summary>
 		/// ソルバーの解像度
 		/// </summary>
-		public SolverResolution solverResolution = SolverResolution.x256;
+		public Resolution solverResolution = Resolution.x256;
 
 		/// <summary>
 		/// テクスチャのラップ設定
@@ -58,6 +58,12 @@ namespace Seiro.GPUSandbox.StableFluids
 		public float velocityAdvectionDecay = .998f;
 
 		/// <summary>
+		/// 色の伝搬時の減衰率
+		/// </summary>
+		[Range(0.9f, 1f)]
+		public float colorAdvectionDecay = .998f;
+
+		/// <summary>
 		/// シミュレーション結果の格納先
 		/// </summary>
 		private PingPongTexture _params;
@@ -74,6 +80,8 @@ namespace Seiro.GPUSandbox.StableFluids
 		private int _simConstantsId;
 		private int _renderingParamsId;
 		private int _obstacleMapId;
+
+		private PingPongTexture _view = null;
 
 		private void Update()
 		{
@@ -143,7 +151,7 @@ namespace Seiro.GPUSandbox.StableFluids
 			// シミュレーション用の各種変数を設定
 			float centreViscCoef = 1f / viscosityCoef;
 			float stencilViscCoef = 1f / (4f + centreViscCoef);
-			_solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, 0f));
+			_solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
 			_solver.SetFloat(_dtId, deltaTime);
 
 			// 渦度の計算と速度場への適用
@@ -172,13 +180,21 @@ namespace Seiro.GPUSandbox.StableFluids
 			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ApplyPressure);
 			_params.Swap();
 
+			// 色の移流
+			if (_view != null)
+			{
+				_solver.SetTexture(_paramsId, _params.read);
+				Graphics.Blit(_view.read, _view.write, _solver, (int)SolverPass.AdvectColor);
+				_view.Swap();
+			}
+
 			// 速度の移流
 			_solver.SetTexture(_paramsId, _params.read);
 			Graphics.Blit(null, _params.write, _solver, (int)SolverPass.AdvectVelocity);
 			_params.Swap();
 		}
 
-		public void Interact(Vector2 pos, float radius, Vector2 force)
+		public void Interact(Vector2 pos, float radius, Vector2 force, Color color)
 		{
 			// 円形に力を加える。
 			_solver.SetVector(_mouseId, new Vector4(pos.x, pos.y, radius, force.magnitude));
@@ -187,11 +203,30 @@ namespace Seiro.GPUSandbox.StableFluids
 			_solver.SetTexture(_paramsId, _params.read);
 			Graphics.Blit(null, _params.write, _solver, pass);
 			_params.Swap();
+
+			if (_view != null)
+			{
+				_solver.SetTexture(_paramsId, _params.read);
+				_solver.SetVector(_mouseId, new Vector4(pos.x, pos.y, radius, 0f));
+				_solver.SetColor(_mouseColorId, color);
+				Graphics.Blit(_view.read, _view.write, _solver, (int)SolverPass.Draw_Circle);
+				_view.Swap();
+			}
 		}
 
 		public RenderTexture GetSimulationTexture()
 		{
 			return _params.read;
+		}
+
+		public void BindViewTexture(PingPongTexture view)
+		{
+			_view = view;
+		}
+
+		public void ReleaseViewTexture()
+		{
+			_view = null;
 		}
 	}
 }

@@ -15,7 +15,7 @@ namespace Seiro.GPUSandbox.StableFluids
         }
 
         public bool isSimulated = true;
-        public SolverResolution solverResolution = SolverResolution.x256;
+        public Resolution solverResolution = Resolution.x256;
 
         public View view = View.All;
         public float p0, p1, p2, p3;
