@@ -35,15 +35,14 @@
 			o.uv.y = 1 - o.uv.y;	// 自前で用意したRenderTextureに対してはy座標は反転させる。
 			return o;
 		}
-		
+
 		sampler2D_float _Params;	// (x, y) : 速度場, (z) : 渦度, (w) : 圧力
 		float4 _Params_TexelSize;
 
 		float _DT;					// delta time
 		float4 _SimConstants;		// (x) : 渦度係数, (y) : 動粘性係数, (z) : 速度移流減衰, (w) : 色移流減衰
 
-		// float2 _Advection;
-
+		// 発散は圧力計算時に計算するようにしたので、これは未使用。
 		// 指定した座標の速度場の発散を計算
 		float div_velocity(float2 x)
 		{
@@ -51,7 +50,7 @@
 			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
 			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
-			return (p_r.x - p_l.x) + (p_u.y - p_d.y);
+			return ((p_r.x - p_l.x) + (p_u.y - p_d.y)) * 0.5;
 		}
 
 		// 指定した座標の速度場の回転とそれによって生じるベクトルを計算
@@ -85,7 +84,7 @@
 			float4 p_l = tex2D(_Params, x + float2(-_Params_TexelSize.x, 0));
 			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
-			return float2((p_r.w - p_l.w) * .5, (p_u.w - p_d.w) * .5);
+			return float2((p_r.w - p_l.w) * 0.5, (p_u.w - p_d.w) * 0.5);
 		}
 
 		// 速度場のラプラシアンを計算

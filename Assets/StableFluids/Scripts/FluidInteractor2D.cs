@@ -7,6 +7,7 @@ namespace Seiro.GPUSandbox.StableFluids
 		public bool canInteract = true;
 		public Fluid2D target;
 		public Rigidbody2D body;
+		public float minVelocityThresh = 0.01f;
 
 		[Space]
 		public float interactionForce = 0.01f;
@@ -24,7 +25,10 @@ namespace Seiro.GPUSandbox.StableFluids
 		private void Interact()
 		{
 			if (!target || !body) return;
-			target.Interact(transform.position, interactionRadius, -body.velocity.normalized * interactionForce, color);
+			if(body.velocity.sqrMagnitude > minVelocityThresh * minVelocityThresh)
+			{
+				target.Interact(transform.position, interactionRadius, transform.rotation * Vector3.left * interactionForce, color);
+			}
 		}
 	}
 }
