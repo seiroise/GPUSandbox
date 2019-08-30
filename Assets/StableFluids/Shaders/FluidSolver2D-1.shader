@@ -64,6 +64,8 @@
 			return float2((p_r.w - p_l.w) * 0.5, (p_u.w - p_d.w) * 0.5);
 		}
 
+		// >> fragment 
+
 		float4 frag_calc_pressure(v2f i) : SV_Target
 		{
 			float4 p = tex2D(_Params, i.uv);
@@ -85,6 +87,8 @@
 			p.xy = q.xy * _SimConstants.z;
 			return p;
 		}
+
+		// <<
 
 		ENDCG
 
