@@ -187,34 +187,34 @@ namespace Seiro.GPUSandbox.StableFluids
                 _params.Swap();
             }
 
-			// シミュレーション用の各種変数を設定
-			float centreViscCoef = 1f / viscosityCoef;
-			float stencilViscCoef = 1f / (4f + centreViscCoef);
+            // シミュレーション用の各種変数を設定
+            float centreViscCoef = 1f / viscosityCoef;
+            float stencilViscCoef = 1f / (4f + centreViscCoef);
             _solver.SetVector(_simConstantsId, new Vector4(vorticityCoef, viscosityCoef, velocityAdvectionDecay, colorAdvectionDecay));
             _solver.SetFloat(_dtId, deltaTime);
 
-			// 渦度の計算と速度場への適用
-			_solver.SetTexture(_paramsId, _params.read);
+            // 渦度の計算と速度場への適用
+            _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyVorticity);
             _params.Swap();
 
-			// 速度場の粘性を計算し適用
-			if (viscosityCoef > 0f)
-			{
-				_solver.SetTexture(_paramsId, _params.read);
-				Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyViscosity);
-				_params.Swap();
-			}
+            // 速度場の粘性を計算し適用
+            if (viscosityCoef > 0f)
+            {
+                _solver.SetTexture(_paramsId, _params.read);
+                Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcAndApplyViscosity);
+                _params.Swap();
+            }
 
-			// 速度場の発散を0にするための圧力を計算
-			for (int i = 0; i < iterations; ++i)
+            // 速度場の発散を0にするための圧力を計算
+            for (int i = 0; i < iterations; ++i)
             {
                 _solver.SetTexture(_paramsId, _params.read);
                 Graphics.Blit(null, _params.write, _solver, (int)SolverPass.CalcPressure);
                 _params.Swap();
             }
 
-			// 計算した圧力を適用する
+            // 計算した圧力を適用する
             _solver.SetTexture(_paramsId, _params.read);
             Graphics.Blit(null, _params.write, _solver, (int)SolverPass.ApplyPressure);
             _params.Swap();

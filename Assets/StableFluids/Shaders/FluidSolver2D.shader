@@ -61,8 +61,8 @@
 			float4 p_u = tex2D(_Params, x + float2(0, _Params_TexelSize.y));
 			float4 p_d = tex2D(_Params, x + float2(0, -_Params_TexelSize.y));
 			vort = float3(abs(p_u.z) - abs(p_d.z)
-						 ,abs(p_l.z) - abs(p_r.z)
-						 ,p_d.x - p_u.x + p_r.y - p_l.y);
+			,abs(p_l.z) - abs(p_r.z)
+			,p_d.x - p_u.x + p_r.y - p_l.y);
 		}
 
 		// 指定した座標の速度場の発散を0に抑えるための圧力を計算
@@ -262,6 +262,29 @@
 			return lerp(params, float4(0,0,0,0.5), step(0.9, obstacle.x));
 		}
 
+		// 任意のパラメータの移流
+		sampler2D_float _FollowerTex;
+		float4 _FollowerDissipation;
+
+		float4 frag_advect_follower(v2f i) : SV_Target
+		{
+			float4 p = tex2D(_Params, i.uv);
+			float4 f = tex2D(_FollowerTex, i.uv - p.xy * _DT);
+			return f * _FollowerDissipation * _DT;
+		}
+
+		float3 _FollowerArea;
+		float4 _FollowerParams;
+
+		float4 frag_write_follower(v2f i) : SV_Target
+		{
+			float4 f = tex2D(_FollowerTex, i.uv);
+			float2 d = i.uv - _FollowerArea.xy;
+			float r2 = _FollowerArea.z * _FollowerArea.z;
+			float c = sdf_circle(d, r2);
+			return lerp(f, _FollowerParams, step(c, 0));
+		}
+
 		// それぞれのパラメータの描画
 		float4 _RenderingParams;
 		fixed4 frag_velocity_color(v2f i) : SV_Target
@@ -378,6 +401,21 @@
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag_apply_obstacle_map
+			ENDCG
+		}
+
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_advect_follower
+			ENDCG
+		}
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_write_follower
 			ENDCG
 		}
 

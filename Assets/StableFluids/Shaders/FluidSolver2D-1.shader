@@ -1,19 +1,19 @@
 ﻿Shader "Hidden/Seiro/FluidSolver2D-1"
 {
-    Properties
-    {
-        [PreRendererData]_MainTex ("Texture", 2D) = "white" {}
-    }
-    SubShader
-    {
-        Cull Off ZWrite Off ZTest Always Blend Off
+	Properties
+	{
+		[PreRendererData]_MainTex ("Texture", 2D) = "white" {}
+	}
+	SubShader
+	{
+		Cull Off ZWrite Off ZTest Always Blend Off
 
 		CGINCLUDE
 
 		#include "UnityCG.cginc"
 
 		#ifndef PI
-		#define PI 3.14159265
+			#define PI 3.14159265
 		#endif
 
 		struct appdata
@@ -38,11 +38,13 @@
 			return o;
 		}
 
+		float _DT;					// 時間差分
+		float4 _SimConstants;		// x = 
+
 		sampler2D_float _Params;
 		float4 _Params_TexelSize;
 
-		float _DT;
-		float4 _SimConstants;
+		sampler2D_float _Follower;	// 速度場情報によって流れる値。
 
 		float calc_pressure(float2 x)
 		{
@@ -88,6 +90,13 @@
 			return p;
 		}
 
+		float frag_advect_follower(v2f i) : SV_Target
+		{
+			float4 p = tex2D(_Params, i.uv);
+			float4 f = tex2D(_Follower, i.uv - p.xy * _DT);
+			return f * _SimConstants.w;
+		}
+
 		// <<
 
 		ENDCG
@@ -118,5 +127,14 @@
 			#pragma fragment frag_advect_velocity
 			ENDCG
 		}
-    }
+
+		// 値を伝搬させる
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag_advect_follower
+			ENDCG
+		}
+	}
 }
