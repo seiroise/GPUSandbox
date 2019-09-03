@@ -201,15 +201,8 @@ namespace Seiro.GPUSandbox.StableFluids
                 _view.Swap();
             }
 
-            // followerの移流
-            if (_follower != null)
-            {
-                _solver.SetTexture(_paramsId, _params.read);
-                _solver.SetTexture(_followerTexId, _follower.read);
-                _solver.SetVector(_followerDissipationId, new Vector4(followerDissipation, 0, 0, 0));
-                Graphics.Blit(null, _follower.write, _solver, (int)SolverPass.AdvectFollower);
-                _follower.Swap();
-            }
+			// followerの移流
+			AdvectFollower(_follower, new Vector4(followerDissipation, 0, 0, 0));
 
             // 速度の移流
             _solver.SetTexture(_paramsId, _params.read);

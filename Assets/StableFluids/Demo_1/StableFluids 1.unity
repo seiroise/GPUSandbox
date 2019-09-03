@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074, b: 0.35872698, a: 1}
+  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074014, b: 0.3587274, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -251,38 +251,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   simulator: {fileID: 334826788}
   simRenderer: {fileID: 119656808}
-  shader: {fileID: 10752, guid: 0000000000000000f000000000000000, type: 0}
   view: 5
-  resolution: 9
+  resolution: 11
   pallete:
     serializedVersion: 2
-    key0: {r: 0.29803923, g: 0.3529412, b: 0.45882353, a: 1}
-    key1: {r: 0.10980392, g: 0.12156863, b: 0.14117648, a: 1}
-    key2: {r: 0.528, g: 0.762112, b: 1, a: 0}
-    key3: {r: 0, g: 0, b: 0, a: 0}
-    key4: {r: 0, g: 0, b: 0, a: 0}
-    key5: {r: 0, g: 0, b: 0, a: 0}
-    key6: {r: 0, g: 0, b: 0, a: 0}
-    key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
-    ctime1: 32768
-    ctime2: 65535
-    ctime3: 0
-    ctime4: 0
-    ctime5: 0
-    ctime6: 0
-    ctime7: 0
+    key0: {r: 0.3099858, g: 0.551353, b: 0.8113208, a: 0}
+    key1: {r: 0.14632596, g: 0.047636595, b: 0.10096093, a: 0.6509804}
+    key2: {r: 0.12941177, g: 0.043137256, b: 0.101960786, a: 1}
+    key3: {r: 0.9254902, g: 0.25490198, b: 0.05490196, a: 0}
+    key4: {r: 1, g: 0.5176471, b: 0.0627451, a: 0}
+    key5: {r: 1, g: 0.7607843, b: 0, a: 0}
+    key6: {r: 0.9764706, g: 0.9098039, b: 0.078431375, a: 0}
+    key7: {r: 1, g: 1, b: 1, a: 0}
+    ctime0: 9487
+    ctime1: 23207
+    ctime2: 40868
+    ctime3: 58018
+    ctime4: 61295
+    ctime5: 62837
+    ctime6: 64379
+    ctime7: 65535
     atime0: 0
-    atime1: 65535
-    atime2: 0
+    atime1: 30651
+    atime2: 65535
     atime3: 0
     atime4: 0
     atime5: 0
     atime6: 0
     atime7: 0
     m_Mode: 0
-    m_NumColorKeys: 3
-    m_NumAlphaKeys: 2
+    m_NumColorKeys: 8
+    m_NumAlphaKeys: 3
   followerMat: {fileID: 2100000, guid: b839a199fa42a4b06b44930b3730619a, type: 2}
 --- !u!1 &143748548
 GameObject:
@@ -541,7 +540,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   simulate: 1
-  solverResolution: 10
+  solverResolution: 9
   wrapMode: 1
   deltaTime: 0.016
   pressureIterations: 20

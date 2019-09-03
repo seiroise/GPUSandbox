@@ -44,7 +44,7 @@
 		fixed4 frag_color(v2f i) : SV_Target
 		{
 			float4 f = tex2D(_Follower, i.uv);
-			fixed4 c = tex2D(_Pallete, float2(0.5, f.x));
+			fixed4 c = tex2D(_Pallete, float2(1 - f.x, 0.5));
 			return c;
 		}
 

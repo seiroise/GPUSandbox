@@ -33,7 +33,7 @@
     /// </summary>
     public enum Resolution
     {
-        x32 = 4,
+        x32 = 5,
         x64,
         x128,
         x256,

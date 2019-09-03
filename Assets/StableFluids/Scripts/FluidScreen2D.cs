@@ -6,13 +6,11 @@ namespace Seiro.GPUSandbox.StableFluids
     {
         public FluidSimulator2D simulator = null;
         public Renderer simRenderer = null;
-        public Shader shader = null;
         public View view = View.Texture;
         public Resolution resolution = Resolution.x1024;
         public Gradient pallete;
         public Material followerMat = null;
 
-        private Material _renderMat = null;
         private PingPongTexture _view = null;
 
         private int _followerRes = 2048;
@@ -39,14 +37,13 @@ namespace Seiro.GPUSandbox.StableFluids
 
         private void Draw()
         {
-            if (!simulator || !_renderMat) return;
             if (followerMat)
             {
                 followerMat.SetTexture("_Follower", _followerMap.read);
                 followerMat.SetTexture("_Pallete", _palleteTex);
                 Graphics.Blit(null, _view.read, followerMat);
             }
-            _renderMat.SetTexture("_MainTex", _view.read);
+            simRenderer.material.SetTexture("_MainTex", _view.read);
         }
 
         public Vector2 WorldToScreenViewport(Vector3 worldPosition)
@@ -61,18 +58,11 @@ namespace Seiro.GPUSandbox.StableFluids
 
         private void BindResources()
         {
-            if (shader != null && simRenderer != null)
-            {
-                _renderMat = new Material(shader);
-                simRenderer.material = _renderMat;
-            }
-
             if (simulator)
             {
                 int size = 1 << (int)resolution;
                 RenderTextureDescriptor desc = UtilFunc.CreateCommonDesc(size, size);
                 _view = new PingPongTexture("fluid view", desc);
-                // simulator.BindViewTexture(_view);
             }
 
             if (_followerMap == null)
@@ -87,12 +77,6 @@ namespace Seiro.GPUSandbox.StableFluids
 
         private void ReleaseResources()
         {
-            if (_renderMat != null && simRenderer != null)
-            {
-                simRenderer.material = null;
-                Destroy(_renderMat);
-                _renderMat = null;
-            }
             if (_view != null)
             {
                 if (simulator)
