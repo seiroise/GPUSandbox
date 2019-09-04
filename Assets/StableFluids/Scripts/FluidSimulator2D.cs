@@ -63,7 +63,7 @@ namespace Seiro.GPUSandbox.StableFluids
         [Range(0.9f, 1f)]
         public float colorAdvectionDecay = .998f;
 
-        [Range(0.1f, 1f)]
+        [Range(0.01f, 1f)]
         public float followerDissipation = .998f;
 
         /// <summary>
@@ -201,8 +201,8 @@ namespace Seiro.GPUSandbox.StableFluids
                 _view.Swap();
             }
 
-			// followerの移流
-			AdvectFollower(_follower, new Vector4(followerDissipation, 0, 0, 0));
+            // followerの移流
+            AdvectFollower(_follower, new Vector4(followerDissipation, 0, 0, 0));
 
             // 速度の移流
             _solver.SetTexture(_paramsId, _params.read);

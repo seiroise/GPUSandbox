@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074014, b: 0.3587274, a: 1}
+  m_IndirectSpecularColor: {r: 0.37311953, g: 0.38074, b: 0.35872698, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -255,34 +255,34 @@ MonoBehaviour:
   resolution: 11
   pallete:
     serializedVersion: 2
-    key0: {r: 0.14632596, g: 0.047636595, b: 0.10096093, a: 1}
-    key1: {r: 0.3099858, g: 0.551353, b: 0.8113208, a: 1}
-    key2: {r: 0.12941177, g: 0.043137256, b: 0.101960786, a: 1}
-    key3: {r: 0.18883325, g: 0.058943957, b: 0.09844819, a: 0.1882353}
-    key4: {r: 0.9254902, g: 0.25490198, b: 0.05490196, a: 0.72156864}
-    key5: {r: 0.12895423, g: 0.08247231, b: 0.069291495, a: 1}
-    key6: {r: 0.084905684, g: 0.07293694, b: 0.07008724, a: 0}
-    key7: {r: 0.28773582, g: 1, b: 0.69737315, a: 0}
-    ctime0: 10509
-    ctime1: 16493
-    ctime2: 22186
-    ctime3: 33424
-    ctime4: 40138
-    ctime5: 46561
-    ctime6: 60572
+    key0: {r: 0.5283019, g: 0.23673905, b: 0.23673905, a: 0}
+    key1: {r: 0.2953008, g: 0.7924528, b: 0.67924136, a: 0.54901963}
+    key2: {r: 0.35924706, g: 0.58940256, b: 0.6509434, a: 1}
+    key3: {r: 0.754717, g: 0.7327494, b: 0.6728373, a: 0.67058825}
+    key4: {r: 0.4094874, g: 0.74165475, b: 0.8113208, a: 0.7607843}
+    key5: {r: 0.43921322, g: 0.6443926, b: 0.8867924, a: 0.9019608}
+    key6: {r: 0.9339623, g: 0.55254024, b: 0.074893214, a: 1}
+    key7: {r: 0.9339623, g: 0.55254024, b: 0.074893214, a: 0}
+    ctime0: 29909
+    ctime1: 45708
+    ctime2: 55546
+    ctime3: 60389
+    ctime4: 61600
+    ctime5: 64778
+    ctime6: 65535
     ctime7: 65535
     atime0: 0
-    atime1: 65535
-    atime2: 3795
-    atime3: 5400
-    atime4: 9925
-    atime5: 65535
-    atime6: 0
+    atime1: 13470
+    atime2: 65535
+    atime3: 10746
+    atime4: 18313
+    atime5: 33903
+    atime6: 65535
     atime7: 0
-    m_Mode: 0
-    m_NumColorKeys: 8
-    m_NumAlphaKeys: 2
-  particleLifeTime: 3
+    m_Mode: 1
+    m_NumColorKeys: 7
+    m_NumAlphaKeys: 3
+  particleLifeTime: 1
   followerMat: {fileID: 2100000, guid: b839a199fa42a4b06b44930b3730619a, type: 2}
 --- !u!1 &143748548
 GameObject:
@@ -544,10 +544,10 @@ MonoBehaviour:
   solverResolution: 9
   wrapMode: 1
   deltaTime: 0.016
-  pressureIterations: 20
-  vorticityCoef: 0.27
+  pressureIterations: 100
+  vorticityCoef: 0.441
   viscosityCoef: 0
-  velocityAdvectionDecay: 0.99
+  velocityAdvectionDecay: 0.9977
   colorAdvectionDecay: 0.99
   followerDissipation: 0.1
 --- !u!1 &402915745
@@ -1621,7 +1621,7 @@ Rigidbody2D:
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDrag: 1
-  m_AngularDrag: 5
+  m_AngularDrag: 1
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_Interpolate: 0
@@ -1641,7 +1641,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   body: {fileID: 1492892053}
-  forceFactor: 20
+  forceFactor: 50
   steerFactor: 100
 --- !u!1 &1535791421
 GameObject:
