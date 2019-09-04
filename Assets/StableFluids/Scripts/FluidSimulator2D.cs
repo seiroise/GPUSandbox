@@ -63,7 +63,7 @@ namespace Seiro.GPUSandbox.StableFluids
         [Range(0.9f, 1f)]
         public float colorAdvectionDecay = .998f;
 
-        [Range(0.9f, 1f)]
+        [Range(0.1f, 1f)]
         public float followerDissipation = .998f;
 
         /// <summary>

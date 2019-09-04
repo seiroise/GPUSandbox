@@ -28,7 +28,7 @@ namespace Seiro.GPUSandbox.StableFluids
             if (body.velocity.sqrMagnitude > minVelocityThresh * minVelocityThresh)
             {
                 target.Interact(transform.position, interactionRadius, transform.rotation * Vector3.left * interactionForce, color);
-                target.WriteFollower(new Vector4(1, 0, 0, 0), transform.position, interactionRadius);
+                target.WriteFollower(transform.position, interactionRadius);
             }
         }
     }

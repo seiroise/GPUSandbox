@@ -8,8 +8,12 @@ namespace Seiro.GPUSandbox.StableFluids
         public Renderer simRenderer = null;
         public View view = View.Texture;
         public Resolution resolution = Resolution.x1024;
-        public Gradient pallete;
-        public Material followerMat = null;
+		
+		[Space]
+		public Gradient pallete;
+		[Range(0.1f, 10f)]
+		public float particleLifeTime = 3f;
+		public Material followerMat = null;
 
         private PingPongTexture _view = null;
 
@@ -41,9 +45,10 @@ namespace Seiro.GPUSandbox.StableFluids
             {
                 followerMat.SetTexture("_Follower", _followerMap.read);
                 followerMat.SetTexture("_Pallete", _palleteTex);
+				followerMat.SetFloat("_ParticleLifeTime", particleLifeTime);
                 Graphics.Blit(null, _view.read, followerMat);
             }
-            simRenderer.material.SetTexture("_MainTex", _view.read);
+            simRenderer.sharedMaterial.SetTexture("_MainTex", _view.read);
         }
 
         public Vector2 WorldToScreenViewport(Vector3 worldPosition)

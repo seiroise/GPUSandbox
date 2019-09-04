@@ -234,11 +234,12 @@ namespace Seiro.GPUSandbox
         public static Texture2D CreatePallete(Gradient grad, int width)
         {
             var tex = new Texture2D(width, 1);
-            var invW = 1f / width;
+            var invW = 1f / (width - 1);
             for (int x = 0; x < width; ++x)
             {
                 tex.SetPixel(x, 0, grad.Evaluate(x * invW));
             }
+			tex.wrapMode = TextureWrapMode.Clamp;
             tex.Apply();
             return tex;
         }

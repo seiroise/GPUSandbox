@@ -16,12 +16,13 @@ namespace Seiro.GPUSandbox.StableFluids
             }
         }
 
-        public void WriteFollower(Vector4 follower, Vector3 worldPosition, float radius)
+        public void WriteFollower(Vector3 worldPosition, float radius)
         {
             if (simulator && screen)
             {
                 Vector3 pos = screen.WorldToScreenViewport(worldPosition);
-                simulator.WriteFollower(screen.followerMap, follower, pos, radius);
+				Vector4 f = new Vector4(screen.particleLifeTime, 0);
+				simulator.WriteFollower(screen.followerMap, f, pos, radius);
             }
         }
     }

@@ -270,7 +270,7 @@
 		{
 			float4 p = tex2D(_Params, i.uv);
 			float4 f = tex2D(_FollowerTex, i.uv - p.xy * _DT);
-			return f - _DT;
+			return f - _FollowerDissipation * _DT;
 		}
 
 		float3 _FollowerArea;

@@ -40,11 +40,13 @@
 
 		sampler2D_float _Follower;
 		sampler2D _Pallete;
+		float _ParticleLifeTime;
 
 		fixed4 frag_color(v2f i) : SV_Target
 		{
 			float4 f = tex2D(_Follower, i.uv);
-			fixed4 c = tex2D(_Pallete, float2(1 - f.x, 0.5));
+			float t = f.x / _ParticleLifeTime;
+			fixed4 c = tex2D(_Pallete, float2(t, 0.5));
 			return c;
 		}
 
