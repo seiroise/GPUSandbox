@@ -255,24 +255,24 @@ MonoBehaviour:
   resolution: 11
   pallete:
     serializedVersion: 2
-    key0: {r: 0.2830189, g: 0.23362409, b: 0.24353199, a: 0}
-    key1: {r: 0.50743145, g: 0.5943396, b: 0.5943396, a: 0.23529412}
+    key0: {r: 0.14632596, g: 0.047636595, b: 0.10096093, a: 1}
+    key1: {r: 0.3099858, g: 0.551353, b: 0.8113208, a: 1}
     key2: {r: 0.12941177, g: 0.043137256, b: 0.101960786, a: 1}
-    key3: {r: 1, g: 1, b: 1, a: 0.1882353}
-    key4: {r: 1, g: 1, b: 1, a: 0.72156864}
-    key5: {r: 1, g: 1, b: 1, a: 1}
-    key6: {r: 1, g: 1, b: 1, a: 0}
-    key7: {r: 1, g: 1, b: 1, a: 0}
-    ctime0: 3649
-    ctime1: 9195
-    ctime2: 22040
-    ctime3: 65535
-    ctime4: 65535
-    ctime5: 65535
-    ctime6: 65535
+    key3: {r: 0.18883325, g: 0.058943957, b: 0.09844819, a: 0.1882353}
+    key4: {r: 0.9254902, g: 0.25490198, b: 0.05490196, a: 0.72156864}
+    key5: {r: 0.12895423, g: 0.08247231, b: 0.069291495, a: 1}
+    key6: {r: 0.084905684, g: 0.07293694, b: 0.07008724, a: 0}
+    key7: {r: 0.28773582, g: 1, b: 0.69737315, a: 0}
+    ctime0: 10509
+    ctime1: 16493
+    ctime2: 22186
+    ctime3: 33424
+    ctime4: 40138
+    ctime5: 46561
+    ctime6: 60572
     ctime7: 65535
     atime0: 0
-    atime1: 2627
+    atime1: 65535
     atime2: 3795
     atime3: 5400
     atime4: 9925
@@ -280,8 +280,8 @@ MonoBehaviour:
     atime6: 0
     atime7: 0
     m_Mode: 0
-    m_NumColorKeys: 4
-    m_NumAlphaKeys: 6
+    m_NumColorKeys: 8
+    m_NumAlphaKeys: 2
   particleLifeTime: 3
   followerMat: {fileID: 2100000, guid: b839a199fa42a4b06b44930b3730619a, type: 2}
 --- !u!1 &143748548
